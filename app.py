@@ -122,7 +122,7 @@ st.markdown(
 )
 
 # --- LE TITRE MODIFIÉ ---
-st.markdown('<div class="title-text">Es-tu un/une boosted piggy ?</div>', unsafe_allow_html=True)
+st.markdown('<div class="title-text">Mérites-tu un vilan C ?</div>', unsafe_allow_html=True)
 
 # --- INPUT & LIEN DPM ---
 col1, col2 = st.columns([3, 1], gap="medium") # Gap medium pour espacer les colonnes
@@ -281,3 +281,4 @@ def analyze():
 
 if st.button('SCANNER (20 DERNIÈRES GAMES)', type="primary"):
     analyze()
+
