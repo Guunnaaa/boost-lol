@@ -3,42 +3,65 @@ import requests
 import time
 from urllib.parse import quote
 
-# --- TA CLÉ API (Hardcodée pour tes potes) ---
-# Attention : Elle expire dans 24h !
-API_KEY = "RGAPI-bf627dfb-6384-4941-b5e6-ef6d299002d4"
-
 # --- CONFIGURATION ---
 st.set_page_config(page_title="Boost Detector ULTIMATE", layout="centered")
 
-# --- STYLE ---
+# --- RÉCUPÉRATION DE LA CLÉ SÉCURISÉE ---
+# Le code va chercher la clé dans les réglages de Streamlit Cloud
+try:
+    API_KEY = st.secrets["RIOT_API_KEY"]
+except FileNotFoundError:
+    st.error("⚠️ ERREUR CONFIG : Tu dois ajouter la clé API dans les 'Secrets' sur Streamlit Cloud.")
+    st.stop()
+
+# --- URL DE TON IMAGE DE FOND ---
+# Instructions :
+# 1. Sur GitHub, upload ton image et appelle-la "bg.jpg".
+# 2. Remplace [TON_NOM_GITHUB] et [NOM_REPO] ci-dessous par les tiens.
+# Exemple : https://raw.githubusercontent.com/Pseudo/boost-lol/main/bg.jpg
+BACKGROUND_IMAGE_URL = "https://raw.githubusercontent.com/[TON_NOM_GITHUB]/[NOM_REPO]/main/bg.jpg"
+
+# Si tu n'as pas encore mis l'image, on utilise une image par défaut temporaire :
+# (Tu peux supprimer cette ligne une fois que tu as mis la tienne)
+BACKGROUND_IMAGE_URL = "https://media.discordapp.net/attachments/1065027576572518490/1179469739770630164/face_tiled.jpg?ex=657a90f2&is=65681bf2&hm=123"
+
+
+# --- STYLE CSS (FOND TUILE) ---
 st.markdown(
-    """
+    f"""
     <style>
-    .stApp {
-        background-image: url("https://images.contentstack.io/v3/assets/blt731acb42bb3d1659/blt2a81f802ca00115e/6532ae3858c70f0742d4a674/102423_TFT_Set10_Social_Header_TFT_Set10_Base_Key_Art_Full_Logo_4k.jpg");
-        background-size: cover;
-        background-position: center;
+    .stApp {{
+        background-image: url("{BACKGROUND_IMAGE_URL}");
+        background-size: 150px; /* Taille des petites têtes */
+        background-repeat: repeat; /* Répétition partout */
         background-attachment: fixed;
-    }
-    .title-text {
+    }}
+    /* Pour rendre le texte lisible par dessus l'image */
+    .block-container {{
+        background-color: rgba(0, 0, 0, 0.85); /* Fond noir semi-transparent au centre */
+        padding: 30px;
+        border-radius: 15px;
+        border: 1px solid #444;
+    }}
+    .title-text {{
         font-family: sans-serif; font-size: 50px; font-weight: 900; color: #ffffff;
         text-shadow: 0 0 10px #ff0055; text-align: center; margin-bottom: 20px; text-transform: uppercase;
-    }
-    .result-box {
+    }}
+    .result-box {{
         padding: 20px; border-radius: 10px; text-align: center; font-size: 24px; font-weight: bold; color: white; margin-top: 20px;
-    }
-    .boosted { background-color: rgba(220, 20, 60, 0.9); border: 4px solid red; }
-    .clean { background-color: rgba(34, 139, 34, 0.9); border: 2px solid #00ff00; }
-    .stat-box { background-color: rgba(0,0,0,0.7); padding: 15px; border-radius: 10px; margin-top: 10px; color: white;}
-    label, .stMarkdown, p, .stMetricLabel { color: white !important; text-shadow: 1px 1px 2px black; }
-    div[data-testid="stMetricValue"] { color: #00ff00 !important; }
+    }}
+    .boosted {{ background-color: rgba(220, 20, 60, 0.9); border: 4px solid red; }}
+    .clean {{ background-color: rgba(34, 139, 34, 0.9); border: 2px solid #00ff00; }}
+    .stat-box {{ background-color: rgba(50,50,50,0.9); padding: 15px; border-radius: 10px; margin-top: 10px; color: white; border: 1px solid white; }}
+    label, .stMarkdown, p, .stMetricLabel {{ color: white !important; }}
+    div[data-testid="stMetricValue"] {{ color: #00ff00 !important; }}
     </style>
     """, unsafe_allow_html=True
 )
 
 st.markdown('<div class="title-text">WHO IS BOOSTING YOU?</div>', unsafe_allow_html=True)
 
-# --- INPUT (Simplifié) ---
+# --- INPUT ---
 col1, col2 = st.columns([3, 1])
 with col1:
     riot_id_input = st.text_input("Riot ID", placeholder="Exemple: Faker#KR1")
@@ -53,20 +76,20 @@ def get_regions(region_code):
 
 def analyze():
     if not riot_id_input or "#" not in riot_id_input:
-        st.error("⚠️ Il faut entrer un pseudo valide (Nom#TAG).")
+        st.error("⚠️ Entre un pseudo valide (Nom#TAG).")
         return
 
     name_raw, tag = riot_id_input.split("#")
     name_encoded = quote(name_raw)
     routing_region = get_regions(region_select)
     
-    with st.spinner('Inspection des performances...'):
+    with st.spinner('Inspection des dossiers confidentiels...'):
         # 1. PUUID
         url_puuid = f"https://{routing_region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{name_encoded}/{tag}?api_key={API_KEY}"
         resp = requests.get(url_puuid)
         
         if resp.status_code == 403:
-            st.error("⛔ La clé API du développeur a expiré. Dis-lui de la changer !")
+            st.error("⛔ La clé API est invalide. Vérifie tes 'Secrets' Streamlit.")
             return
         elif resp.status_code != 200:
             st.error(f"Erreur : Joueur introuvable ou erreur technique ({resp.status_code})")
@@ -87,7 +110,7 @@ def analyze():
         duo_tracker = {}
         progress_bar = st.progress(0)
         
-        # Pour comparer les stats du joueur vs son duo
+        # Pour comparer les stats
         my_stats_accumulator = {'kills': 0, 'deaths': 0, 'assists': 0}
 
         for i, match_id in enumerate(match_ids):
@@ -101,14 +124,12 @@ def analyze():
             me = next((p for p in participants if p['puuid'] == puuid), None)
             
             if me:
-                # On cumule mes stats
                 my_stats_accumulator['kills'] += me['kills']
                 my_stats_accumulator['deaths'] += me['deaths']
                 my_stats_accumulator['assists'] += me['assists']
 
                 for p in participants:
                     if p['teamId'] == me['teamId'] and p['puuid'] != puuid:
-                        # Récupération du nom sécurisée
                         r_name = p.get('riotIdGameName', p.get('summonerName', 'Unknown'))
                         r_tag = p.get('riotIdTagLine', '')
                         identity = f"{r_name}#{r_tag}" if r_tag else r_name
@@ -121,7 +142,7 @@ def analyze():
                         duo_tracker[identity]['kills'] += p['kills']
                         duo_tracker[identity]['deaths'] += p['deaths']
                         duo_tracker[identity]['assists'] += p['assists']
-            time.sleep(0.05) # Petit délai pour l'API
+            time.sleep(0.05)
 
         # 4. Verdict Sévère
         st.markdown("---")
@@ -134,15 +155,13 @@ def analyze():
                 max_games = stats['games']
                 best_duo = (identity, stats)
 
-        # RÈGLES : Si un mec est là 2 fois ou plus
+        # RÈGLE : Si croisé 2 fois ou plus
         if best_duo and max_games >= 2:
             identity, stats = best_duo
             
-            # Calcul KDA Duo
             duo_deaths = stats['deaths'] if stats['deaths'] > 0 else 1
             duo_kda = round((stats['kills'] + stats['assists']) / duo_deaths, 2)
             
-            # Calcul KDA Joueur (sur 10 games)
             my_deaths = my_stats_accumulator['deaths'] if my_stats_accumulator['deaths'] > 0 else 1
             my_kda = round((my_stats_accumulator['kills'] + my_stats_accumulator['assists']) / my_deaths, 2)
 
@@ -150,25 +169,24 @@ def analyze():
             
             st.markdown(f"""<div class="result-box boosted">🚨 DUO DÉTECTÉ 🚨<br>{identity}</div>""", unsafe_allow_html=True)
             
-            # Affichage des stats comparatives
-            st.markdown(f"<div class='stat-box'>Ils ont joué <b>{stats['games']}</b> parties ensemble (Winrate: {winrate}%).<br>Voici la vérité sur les stats :</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='stat-box'>Vu <b>{stats['games']}</b> fois ensemble (Winrate: {winrate}%).<br>Comparatif des KDA :</div>", unsafe_allow_html=True)
             
             c1, c2 = st.columns(2)
             with c1:
-                st.metric("Ton KDA (Moyen)", my_kda)
+                st.metric("Ton KDA", my_kda)
             with c2:
                 st.metric(f"KDA de {identity.split('#')[0]}", duo_kda, delta=round(duo_kda - my_kda, 2))
 
             if duo_kda > my_kda + 1.0:
-                st.error(f"VERDICT : Il joue bien mieux que toi. C'est du boosting.")
+                st.error(f"VERDICT : Il joue beaucoup mieux que toi. C'est du boosting pur.")
             elif winrate < 50:
-                st.warning("VERDICT : C'est ton Duo, mais vous perdez. Change de mate.")
+                st.warning("VERDICT : C'est ton Duo, mais vous perdez. Arrêtez le massacre.")
             else:
-                st.success("VERDICT : Duo solide, niveaux équivalents.")
+                st.success("VERDICT : Duo legit, niveaux équivalents.")
                 
         else:
             st.markdown("""<div class="result-box clean">SOLO PLAYER</div>""", unsafe_allow_html=True)
-            st.write("Aucun joueur croisé plus d'une fois sur les 10 dernières games.")
+            st.write("Aucun joueur croisé de façon récurrente sur les 10 dernières games.")
 
-if st.button('SCANNER LE JOUEUR', type="primary"):
+if st.button('LANCER L\'ANQUÊTE', type="primary"):
     analyze()
