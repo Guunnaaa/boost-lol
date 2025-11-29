@@ -4,7 +4,7 @@ import time
 from urllib.parse import quote
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="Boost Detector V7", layout="wide")
+st.set_page_config(page_title="Boost Detector", layout="wide")
 
 # --- CLÉ API ---
 try:
@@ -121,7 +121,8 @@ st.markdown(
     """, unsafe_allow_html=True
 )
 
-st.markdown('<div class="title-text">WHO IS BOOSTING YOU?</div>', unsafe_allow_html=True)
+# --- LE TITRE MODIFIÉ ---
+st.markdown('<div class="title-text">Es-tu un/une boosted piggy ?</div>', unsafe_allow_html=True)
 
 # --- INPUT & LIEN DPM ---
 col1, col2 = st.columns([3, 1], gap="medium") # Gap medium pour espacer les colonnes
@@ -143,7 +144,7 @@ with col2:
 
 st.markdown("<br>", unsafe_allow_html=True) # Un saut de ligne forcé pour aérer avant le bouton
 
-# --- FONCTIONS (LOGIQUE V6 CONSERVÉE) ---
+# --- FONCTIONS ---
 def get_regions(region_code):
     if region_code in ["EUW1", "EUN1", "TR1", "RU"]: return "europe"
     elif region_code == "KR": return "asia"
@@ -252,7 +253,7 @@ def analyze():
             st.markdown(f"""<div class="result-box boosted">🚨 DUO SUSPECT : {identity} 🚨</div>""", unsafe_allow_html=True)
             st.markdown(f"<p style='text-align:center; font-size:18px;'>Vu <b>{s['games']} fois</b> sur les 20 dernières games.</p>", unsafe_allow_html=True)
             
-            st.markdown("<br>", unsafe_allow_html=True) # Espace avant les stats
+            st.markdown("<br>", unsafe_allow_html=True)
 
             c1, c2 = st.columns(2)
             with c1:
@@ -278,6 +279,5 @@ def analyze():
             st.markdown("""<div class="result-box clean">SOLO PLAYER</div>""", unsafe_allow_html=True)
             st.markdown("<p style='text-align:center;'>Aucun duo récurrent détecté. Tu joues vraiment tout seul.</p>", unsafe_allow_html=True)
 
-# BOUTON PRINCIPAL (Avec un peu plus d'espace autour)
 if st.button('SCANNER (20 DERNIÈRES GAMES)', type="primary"):
     analyze()
