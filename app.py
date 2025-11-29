@@ -4,7 +4,7 @@ import time
 from urllib.parse import quote
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="Boost Detector V6", layout="wide")
+st.set_page_config(page_title="Boost Detector V7", layout="wide")
 
 # --- CLÉ API ---
 try:
@@ -16,7 +16,7 @@ except FileNotFoundError:
 # --- BACKGROUND ---
 BACKGROUND_IMAGE_URL = "https://media.discordapp.net/attachments/1065027576572518490/1179469739770630164/face_tiled.jpg?ex=657a90f2&is=65681bf2&hm=123"
 
-# --- STYLE CSS ---
+# --- STYLE CSS (DESIGN & ESPACEMENT) ---
 st.markdown(
     f"""
     <style>
@@ -28,53 +28,95 @@ st.markdown(
         background-attachment: fixed;
     }}
     
-    /* Bloc central */
+    /* BLOC CENTRAL (Plus aéré) */
     .block-container {{
-        max-width: 700px !important;
-        padding-top: 2rem !important;
+        max-width: 800px !important;
+        padding-top: 3rem !important;
         padding-bottom: 5rem !important;
+        padding-left: 3rem !important;
+        padding-right: 3rem !important;
         margin: auto !important;
-        background-color: rgba(0, 0, 0, 0.90);
-        border-radius: 20px;
-        border: 1px solid #333;
-        box-shadow: 0 0 20px rgba(0,0,0,0.8);
-    }}
-
-    /* Titre */
-    .title-text {{
-        font-family: sans-serif; font-size: 40px; font-weight: 900; color: #ffffff;
-        text-shadow: 0 0 10px #ff0055; text-align: center; margin-bottom: 20px; text-transform: uppercase;
-        line-height: 1.2;
-    }}
-
-    /* Style du lien dpm.lol */
-    .dpm-link {{
-        text-decoration: none;
-        color: #bbb;
-        font-size: 14px;
-        background-color: rgba(255, 255, 255, 0.1);
-        padding: 5px 10px;
-        border-radius: 5px;
+        background-color: rgba(10, 10, 10, 0.95); /* Plus sombre */
+        border-radius: 25px;
         border: 1px solid #444;
-        transition: 0.3s;
-        display: inline-block;
-        margin-top: 5px;
-    }}
-    .dpm-link:hover {{
-        color: white;
-        border-color: #ff0055;
-        box-shadow: 0 0 10px rgba(255, 0, 85, 0.5);
+        box-shadow: 0 0 30px rgba(0,0,0,0.9);
     }}
 
-    /* Boites de résultat */
-    .result-box {{ padding: 20px; border-radius: 10px; text-align: center; font-size: 22px; font-weight: bold; color: white; margin-top: 20px; }}
-    .boosted {{ background-color: rgba(220, 20, 60, 0.9); border: 4px solid red; }}
-    .clean {{ background-color: rgba(34, 139, 34, 0.9); border: 2px solid #00ff00; }}
-    .stat-box {{ background-color: rgba(50,50,50,0.5); padding: 15px; border-radius: 10px; margin-top: 15px; color: #ddd; font-size: 14px; border-left: 3px solid #ff0055; }}
+    /* TITRE */
+    .title-text {{
+        font-family: 'Segoe UI', sans-serif; 
+        font-size: 45px; 
+        font-weight: 900; 
+        color: #ffffff;
+        text-shadow: 0 0 15px #ff0055; 
+        text-align: center; 
+        margin-bottom: 40px; /* Plus d'espace sous le titre */
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }}
+
+    /* BOUTON DPM.LOL (STYLE HEXTECH) */
+    .dpm-button {{
+        display: inline-block;
+        background: linear-gradient(90deg, #6a11cb 0%, #2575fc 100%); /* Dégradé stylé */
+        color: white !important;
+        padding: 12px 25px;
+        border-radius: 50px; /* Arrondi */
+        font-family: 'Verdana', sans-serif;
+        font-weight: bold;
+        font-size: 14px;
+        text-transform: uppercase;
+        text-decoration: none;
+        box-shadow: 0 4px 15px rgba(37, 117, 252, 0.4);
+        transition: all 0.3s ease;
+        margin-top: 15px; /* Espace au dessus du bouton */
+        border: 1px solid rgba(255,255,255,0.2);
+    }}
+    .dpm-button:hover {{
+        transform: translateY(-3px); /* Le bouton monte un peu */
+        box-shadow: 0 8px 25px rgba(37, 117, 252, 0.6);
+        background: linear-gradient(90deg, #2575fc 0%, #6a11cb 100%);
+    }}
+
+    /* RESULTATS & STATS */
+    .result-box {{ 
+        padding: 30px; 
+        border-radius: 15px; 
+        text-align: center; 
+        font-size: 26px; 
+        font-weight: bold; 
+        color: white; 
+        margin-top: 40px; /* Espace avant le résultat */
+        margin-bottom: 20px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    }}
+    .boosted {{ background-color: rgba(220, 20, 60, 0.9); border: 3px solid #ff4444; }}
+    .clean {{ background-color: rgba(34, 139, 34, 0.9); border: 3px solid #00ff00; }}
     
-    /* Textes blancs */
-    p, label, .stMarkdown, .stMetricLabel {{ color: #eee !important; }}
-    div[data-testid="stMetricValue"] {{ color: #00ff00 !important; }}
+    .stat-box {{ 
+        background-color: rgba(40,40,40,0.8); 
+        padding: 20px; 
+        border-radius: 12px; 
+        margin-top: 25px; 
+        color: #eee; 
+        font-size: 16px; 
+        border-left: 4px solid #ff0055; 
+    }}
+    
+    /* CUSTOMISATION STREAMLIT GENERALE */
+    p, label, .stMarkdown, .stMetricLabel {{ color: #eee !important; font-size: 16px !important; }}
+    div[data-testid="stMetricValue"] {{ font-size: 28px !important; color: #00ff00 !important; }}
+    
+    /* Espace entre les input et le bouton scanner */
+    .stButton {{ margin-top: 20px; }}
+    .stButton > button {{
+        width: 100%;
+        border-radius: 10px;
+        font-weight: bold;
+        font-size: 20px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }}
     </style>
     """, unsafe_allow_html=True
 )
@@ -82,14 +124,16 @@ st.markdown(
 st.markdown('<div class="title-text">WHO IS BOOSTING YOU?</div>', unsafe_allow_html=True)
 
 # --- INPUT & LIEN DPM ---
-col1, col2 = st.columns([3, 1])
+col1, col2 = st.columns([3, 1], gap="medium") # Gap medium pour espacer les colonnes
+
 with col1:
-    riot_id_input = st.text_input("Riot ID", placeholder="Exemple: Faker#KR1")
-    # C'est ici que j'ai ajouté le lien stylisé :
+    riot_id_input = st.text_input("Entre le Riot ID", placeholder="Nom#TAG")
+    
+    # LE NOUVEAU BOUTON JOLI
     st.markdown("""
         <div style="text-align: right;">
-            <a href="https://dpm.lol" target="_blank" class="dpm-link">
-                🔍 Pseudo introuvable ? Cherche sur <b>dpm.lol</b>
+            <a href="https://dpm.lol" target="_blank" class="dpm-button">
+                🔍 Trouver un pseudo sur dpm.lol
             </a>
         </div>
     """, unsafe_allow_html=True)
@@ -97,7 +141,9 @@ with col1:
 with col2:
     region_select = st.selectbox("Région", ["EUW1", "NA1", "KR", "EUN1", "TR1"])
 
-# --- FONCTIONS ---
+st.markdown("<br>", unsafe_allow_html=True) # Un saut de ligne forcé pour aérer avant le bouton
+
+# --- FONCTIONS (LOGIQUE V6 CONSERVÉE) ---
 def get_regions(region_code):
     if region_code in ["EUW1", "EUN1", "TR1", "RU"]: return "europe"
     elif region_code == "KR": return "asia"
@@ -115,7 +161,7 @@ def analyze():
     # 1. PUUID
     url_puuid = f"https://{routing_region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{name_encoded}/{tag}?api_key={API_KEY}"
     
-    with st.spinner('Analyse des 20 dernières games...'):
+    with st.spinner('Analyse des 20 dernières games en cours...'):
         resp = requests.get(url_puuid)
         if resp.status_code != 200:
             st.error(f"Erreur API ({resp.status_code}). Vérifie le pseudo.")
@@ -204,15 +250,17 @@ def analyze():
             winrate = int((s['wins'] / s['games']) * 100)
 
             st.markdown(f"""<div class="result-box boosted">🚨 DUO SUSPECT : {identity} 🚨</div>""", unsafe_allow_html=True)
-            st.markdown(f"<p style='text-align:center;'>Vu <b>{s['games']} fois</b> sur les 20 dernières games.</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align:center; font-size:18px;'>Vu <b>{s['games']} fois</b> sur les 20 dernières games.</p>", unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True) # Espace avant les stats
 
             c1, c2 = st.columns(2)
             with c1:
-                st.markdown(f"<h3 style='text-align:center; color:white;'>TOI<br>(avec lui)</h3>", unsafe_allow_html=True)
+                st.markdown(f"<h3 style='text-align:center; color:white;'>TOI<br><span style='font-size:16px'>(quand t'es avec lui)</span></h3>", unsafe_allow_html=True)
                 st.metric("KDA", my_kda)
                 st.metric("Dégâts/Game", my_avg_dmg)
             with c2:
-                st.markdown(f"<h3 style='text-align:center; color:red;'>LUI<br>(le booster?)</h3>", unsafe_allow_html=True)
+                st.markdown(f"<h3 style='text-align:center; color:red;'>LUI<br><span style='font-size:16px'>(le booster?)</span></h3>", unsafe_allow_html=True)
                 delta_kda = round(duo_kda - my_kda, 2)
                 delta_dmg = duo_avg_dmg - my_avg_dmg
                 st.metric("KDA", duo_kda, delta=delta_kda)
@@ -221,14 +269,15 @@ def analyze():
             st.markdown(f"<div class='stat-box'>Winrate ensemble : <b>{winrate}%</b></div>", unsafe_allow_html=True)
 
             if duo_kda > my_kda + 1.5 or duo_avg_dmg > my_avg_dmg + 5000:
-                st.error(f"VERDICT : 100% BOOSTED. Il carry, tu regardes.")
+                st.error(f"VERDICT : 100% BOOSTED. Il fait tout le taf, tu récoltes les LP.")
             elif winrate < 50:
-                st.warning("VERDICT : C'est ton duo, mais vous perdez.")
+                st.warning("VERDICT : C'est ton duo, mais vous perdez. Changez de stratégie.")
             else:
-                st.success("VERDICT : Duo legit. Niveaux équivalents.")
+                st.success("VERDICT : Duo legit. Vous avez le même niveau.")
         else:
             st.markdown("""<div class="result-box clean">SOLO PLAYER</div>""", unsafe_allow_html=True)
-            st.markdown("<p style='text-align:center;'>Aucun duo récurrent détecté.</p>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align:center;'>Aucun duo récurrent détecté. Tu joues vraiment tout seul.</p>", unsafe_allow_html=True)
 
-if st.button('SCANNER (20 GAMES)', type="primary"):
+# BOUTON PRINCIPAL (Avec un peu plus d'espace autour)
+if st.button('SCANNER (20 DERNIÈRES GAMES)', type="primary"):
     analyze()
