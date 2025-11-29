@@ -3,21 +3,20 @@ import requests
 import time
 from urllib.parse import quote
 
-# --- CONFIGURATION (MODE WIDE POUR CORRIGER L'AFFICHAGE COUPÉ) ---
-st.set_page_config(page_title="Boost Detector V5", layout="wide")
+# --- CONFIGURATION ---
+st.set_page_config(page_title="Boost Detector V6", layout="wide")
 
-# --- RÉCUPÉRATION CLÉ API ---
+# --- CLÉ API ---
 try:
     API_KEY = st.secrets["RIOT_API_KEY"]
 except FileNotFoundError:
-    st.error("⚠️ Clé API introuvable dans les secrets.")
+    st.error("⚠️ Clé API introuvable. Ajoute-la dans les secrets Streamlit.")
     st.stop()
 
-# --- BACKGROUND IMAGE ---
+# --- BACKGROUND ---
 BACKGROUND_IMAGE_URL = "https://media.discordapp.net/attachments/1065027576572518490/1179469739770630164/face_tiled.jpg?ex=657a90f2&is=65681bf2&hm=123"
-# Si tu as mis ton image sur GitHub, remplace le lien ci-dessus.
 
-# --- CSS ROBUSTE (POUR CENTRER SANS COUPER) ---
+# --- STYLE CSS ---
 st.markdown(
     f"""
     <style>
@@ -29,40 +28,51 @@ st.markdown(
         background-attachment: fixed;
     }}
     
-    /* On force le contenu à se centrer dans une boite de max 700px */
+    /* Bloc central */
     .block-container {{
         max-width: 700px !important;
         padding-top: 2rem !important;
         padding-bottom: 5rem !important;
         margin: auto !important;
-        background-color: rgba(0, 0, 0, 0.90); /* Fond très sombre */
+        background-color: rgba(0, 0, 0, 0.90);
         border-radius: 20px;
         border: 1px solid #333;
         box-shadow: 0 0 20px rgba(0,0,0,0.8);
     }}
 
-    /* Textes et Titres */
+    /* Titre */
     .title-text {{
         font-family: sans-serif; font-size: 40px; font-weight: 900; color: #ffffff;
         text-shadow: 0 0 10px #ff0055; text-align: center; margin-bottom: 20px; text-transform: uppercase;
         line-height: 1.2;
     }}
-    .result-box {{
-        padding: 20px; border-radius: 10px; text-align: center; font-size: 22px; font-weight: bold; color: white; margin-top: 20px;
+
+    /* Style du lien dpm.lol */
+    .dpm-link {{
+        text-decoration: none;
+        color: #bbb;
+        font-size: 14px;
+        background-color: rgba(255, 255, 255, 0.1);
+        padding: 5px 10px;
+        border-radius: 5px;
+        border: 1px solid #444;
+        transition: 0.3s;
+        display: inline-block;
+        margin-top: 5px;
     }}
+    .dpm-link:hover {{
+        color: white;
+        border-color: #ff0055;
+        box-shadow: 0 0 10px rgba(255, 0, 85, 0.5);
+    }}
+
+    /* Boites de résultat */
+    .result-box {{ padding: 20px; border-radius: 10px; text-align: center; font-size: 22px; font-weight: bold; color: white; margin-top: 20px; }}
     .boosted {{ background-color: rgba(220, 20, 60, 0.9); border: 4px solid red; }}
     .clean {{ background-color: rgba(34, 139, 34, 0.9); border: 2px solid #00ff00; }}
-    .stat-box {{ 
-        background-color: rgba(50,50,50,0.5); 
-        padding: 15px; 
-        border-radius: 10px; 
-        margin-top: 15px; 
-        color: #ddd; 
-        font-size: 14px;
-        border-left: 3px solid #ff0055;
-    }}
+    .stat-box {{ background-color: rgba(50,50,50,0.5); padding: 15px; border-radius: 10px; margin-top: 15px; color: #ddd; font-size: 14px; border-left: 3px solid #ff0055; }}
     
-    /* Force la couleur du texte Streamlit en blanc */
+    /* Textes blancs */
     p, label, .stMarkdown, .stMetricLabel {{ color: #eee !important; }}
     div[data-testid="stMetricValue"] {{ color: #00ff00 !important; }}
     </style>
@@ -71,10 +81,19 @@ st.markdown(
 
 st.markdown('<div class="title-text">WHO IS BOOSTING YOU?</div>', unsafe_allow_html=True)
 
-# --- INPUT ---
+# --- INPUT & LIEN DPM ---
 col1, col2 = st.columns([3, 1])
 with col1:
     riot_id_input = st.text_input("Riot ID", placeholder="Exemple: Faker#KR1")
+    # C'est ici que j'ai ajouté le lien stylisé :
+    st.markdown("""
+        <div style="text-align: right;">
+            <a href="https://dpm.lol" target="_blank" class="dpm-link">
+                🔍 Pseudo introuvable ? Cherche sur <b>dpm.lol</b>
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
+
 with col2:
     region_select = st.selectbox("Région", ["EUW1", "NA1", "KR", "EUN1", "TR1"])
 
@@ -86,7 +105,7 @@ def get_regions(region_code):
 
 def analyze():
     if not riot_id_input or "#" not in riot_id_input:
-        st.error("⚠️ Format invalide. Utilise Nom#TAG.")
+        st.error("⚠️ Format invalide. Il faut le #TAG.")
         return
 
     name_raw, tag = riot_id_input.split("#")
@@ -99,12 +118,11 @@ def analyze():
     with st.spinner('Analyse des 20 dernières games...'):
         resp = requests.get(url_puuid)
         if resp.status_code != 200:
-            st.error(f"Erreur Riot API ({resp.status_code}). Vérifie le pseudo.")
+            st.error(f"Erreur API ({resp.status_code}). Vérifie le pseudo.")
             return
         puuid = resp.json().get("puuid")
 
         # 2. MATCHS (20 Dernières SoloQ)
-        # count=20 ici
         url_matches = f"https://{routing_region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue=420&start=0&count=20&api_key={API_KEY}"
         match_ids = requests.get(url_matches).json()
 
@@ -113,10 +131,7 @@ def analyze():
             return
 
         # 3. ANALYSE COMPARATIVE
-        # On va stocker les stats DUO et MES stats uniquement quand je joue AVEC lui
         duo_data = {} 
-        # Structure : {'Pseudo#Tag': {'games': 0, 'wins': 0, 'duo_kills':0..., 'my_kills_with_him':0...}}
-
         progress_bar = st.progress(0)
         
         for i, match_id in enumerate(match_ids):
@@ -131,16 +146,11 @@ def analyze():
             me = next((p for p in participants if p['puuid'] == puuid), None)
             
             if me:
-                # Je note mes stats pour cette game
-                my_k = me['kills']
-                my_d = me['deaths']
-                my_a = me['assists']
+                my_k, my_d, my_a = me['kills'], me['deaths'], me['assists']
                 my_dmg = me['totalDamageDealtToChampions']
 
-                # Je scanne les autres
                 for p in participants:
                     if p['teamId'] == me['teamId'] and p['puuid'] != puuid:
-                        # Identité
                         r_name = p.get('riotIdGameName', p.get('summonerName', 'Unknown'))
                         r_tag = p.get('riotIdTagLine', '')
                         identity = f"{r_name}#{r_tag}" if r_tag else r_name
@@ -152,62 +162,50 @@ def analyze():
                                 'my_k': 0, 'my_d': 0, 'my_a': 0, 'my_dmg': 0
                             }
                         
-                        # On incrémente les stats du DUO
                         stats = duo_data[identity]
                         stats['games'] += 1
                         if p['win']: stats['wins'] += 1
-                        
                         stats['duo_k'] += p['kills']
                         stats['duo_d'] += p['deaths']
                         stats['duo_a'] += p['assists']
                         stats['duo_dmg'] += p['totalDamageDealtToChampions']
                         
-                        # IMPORTANT : On incrémente MES stats (liées à ce duo)
                         stats['my_k'] += my_k
                         stats['my_d'] += my_d
                         stats['my_a'] += my_a
                         stats['my_dmg'] += my_dmg
 
-            # Pause pour l'API Rate Limit (surtout avec 20 games)
             time.sleep(0.15) 
 
         # 4. VERDICT
         st.markdown("---")
         
-        # Trouver le meilleur duo
-        suspect_name = None
-        suspect_stats = None
+        best_duo = None
         max_games = 0
 
         for identity, stats in duo_data.items():
             if stats['games'] > max_games:
                 max_games = stats['games']
-                suspect_name = identity
-                suspect_stats = stats
+                best_duo = (identity, stats)
 
-        # SEUIL : 4 games sur 20 pour être considéré comme un Duo régulier
-        if suspect_stats and max_games >= 4:
-            s = suspect_stats
+        # SEUIL : 4 games sur 20
+        if best_duo and max_games >= 4:
+            identity, s = best_duo
             
-            # Calcul des moyennes sur les games communes
-            # KDA
+            # Calculs
             duo_deaths = s['duo_d'] if s['duo_d'] > 0 else 1
             duo_kda = round((s['duo_k'] + s['duo_a']) / duo_deaths, 2)
             
             my_deaths = s['my_d'] if s['my_d'] > 0 else 1
             my_kda = round((s['my_k'] + s['my_a']) / my_deaths, 2)
             
-            # Dégâts moyens
             duo_avg_dmg = int(s['duo_dmg'] / s['games'])
             my_avg_dmg = int(s['my_dmg'] / s['games'])
-
             winrate = int((s['wins'] / s['games']) * 100)
 
-            # AFFICHAGE
-            st.markdown(f"""<div class="result-box boosted">🚨 DUO SUSPECT : {suspect_name} 🚨</div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class="result-box boosted">🚨 DUO SUSPECT : {identity} 🚨</div>""", unsafe_allow_html=True)
             st.markdown(f"<p style='text-align:center;'>Vu <b>{s['games']} fois</b> sur les 20 dernières games.</p>", unsafe_allow_html=True)
 
-            # Colonnes stats
             c1, c2 = st.columns(2)
             with c1:
                 st.markdown(f"<h3 style='text-align:center; color:white;'>TOI<br>(avec lui)</h3>", unsafe_allow_html=True)
@@ -220,19 +218,17 @@ def analyze():
                 st.metric("KDA", duo_kda, delta=delta_kda)
                 st.metric("Dégâts/Game", duo_avg_dmg, delta=delta_dmg)
 
-            # Le Jugement Final
             st.markdown(f"<div class='stat-box'>Winrate ensemble : <b>{winrate}%</b></div>", unsafe_allow_html=True)
 
             if duo_kda > my_kda + 1.5 or duo_avg_dmg > my_avg_dmg + 5000:
-                st.error(f"VERDICT : 100% BOOSTED. Il a de meilleures stats que toi sur VOS parties.")
+                st.error(f"VERDICT : 100% BOOSTED. Il carry, tu regardes.")
             elif winrate < 50:
-                st.warning("VERDICT : C'est bien ton duo, mais vous êtes nuls ensemble.")
+                st.warning("VERDICT : C'est ton duo, mais vous perdez.")
             else:
-                st.success("VERDICT : Duo legit. Vous contribuez tous les deux à la victoire.")
-
+                st.success("VERDICT : Duo legit. Niveaux équivalents.")
         else:
             st.markdown("""<div class="result-box clean">SOLO PLAYER</div>""", unsafe_allow_html=True)
-            st.markdown("<p style='text-align:center;'>Aucun joueur croisé plus de 3 fois sur les 20 dernières games.</p>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align:center;'>Aucun duo récurrent détecté.</p>", unsafe_allow_html=True)
 
-if st.button('SCANNER LES 20 DERNIÈRES GAMES', type="primary"):
+if st.button('SCANNER (20 GAMES)', type="primary"):
     analyze()
