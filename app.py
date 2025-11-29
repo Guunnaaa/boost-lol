@@ -3,6 +3,10 @@ import requests
 import time
 from urllib.parse import quote
 
+# --- TA CLÉ API (Hardcodée pour tes potes) ---
+# Attention : Elle expire dans 24h !
+API_KEY = "RGAPI-bf627dfb-6384-4941-b5e6-ef6d299002d4"
+
 # --- CONFIGURATION ---
 st.set_page_config(page_title="Boost Detector ULTIMATE", layout="centered")
 
@@ -34,16 +38,12 @@ st.markdown(
 
 st.markdown('<div class="title-text">WHO IS BOOSTING YOU?</div>', unsafe_allow_html=True)
 
-# --- SIDEBAR ---
-st.sidebar.title("Config")
-api_key = st.sidebar.text_input("1. Clé API Riot", type="password").strip()
-
-# --- INPUT ---
+# --- INPUT (Simplifié) ---
 col1, col2 = st.columns([3, 1])
 with col1:
-    riot_id_input = st.text_input("2. Riot ID", placeholder="Nom#TAG")
+    riot_id_input = st.text_input("Riot ID", placeholder="Exemple: Faker#KR1")
 with col2:
-    region_select = st.selectbox("3. Région", ["EUW1", "NA1", "KR", "EUN1"])
+    region_select = st.selectbox("Région", ["EUW1", "NA1", "KR", "EUN1", "TR1"])
 
 # --- FONCTIONS ---
 def get_regions(region_code):
@@ -52,8 +52,8 @@ def get_regions(region_code):
     else: return "americas"
 
 def analyze():
-    if not api_key or "#" not in riot_id_input:
-        st.error("Il manque la clé API ou le #TAG.")
+    if not riot_id_input or "#" not in riot_id_input:
+        st.error("⚠️ Il faut entrer un pseudo valide (Nom#TAG).")
         return
 
     name_raw, tag = riot_id_input.split("#")
@@ -62,19 +62,25 @@ def analyze():
     
     with st.spinner('Inspection des performances...'):
         # 1. PUUID
-        url_puuid = f"https://{routing_region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{name_encoded}/{tag}?api_key={api_key}"
+        url_puuid = f"https://{routing_region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{name_encoded}/{tag}?api_key={API_KEY}"
         resp = requests.get(url_puuid)
-        if resp.status_code != 200:
-            st.error(f"Erreur API: {resp.status_code}")
+        
+        if resp.status_code == 403:
+            st.error("⛔ La clé API du développeur a expiré. Dis-lui de la changer !")
             return
+        elif resp.status_code != 200:
+            st.error(f"Erreur : Joueur introuvable ou erreur technique ({resp.status_code})")
+            return
+            
         puuid = resp.json().get("puuid")
 
         # 2. Matchs (Queue 420 = SoloQ)
-        url_matches = f"https://{routing_region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue=420&start=0&count=10&api_key={api_key}"
-        match_ids = requests.get(url_matches).json()
+        url_matches = f"https://{routing_region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue=420&start=0&count=10&api_key={API_KEY}"
+        match_resp = requests.get(url_matches)
+        match_ids = match_resp.json()
 
-        if not match_ids:
-            st.warning("Pas de games récentes.")
+        if not match_ids or len(match_ids) == 0:
+            st.warning("Pas de games classées récentes.")
             return
 
         # 3. Analyse détaillée
@@ -86,7 +92,7 @@ def analyze():
 
         for i, match_id in enumerate(match_ids):
             progress_bar.progress((i + 1) / len(match_ids))
-            detail_url = f"https://{routing_region}.api.riotgames.com/lol/match/v5/matches/{match_id}?api_key={api_key}"
+            detail_url = f"https://{routing_region}.api.riotgames.com/lol/match/v5/matches/{match_id}?api_key={API_KEY}"
             data = requests.get(detail_url).json()
             
             if 'info' not in data: continue
@@ -95,7 +101,7 @@ def analyze():
             me = next((p for p in participants if p['puuid'] == puuid), None)
             
             if me:
-                # On cumule mes stats pour voir si je suis nul
+                # On cumule mes stats
                 my_stats_accumulator['kills'] += me['kills']
                 my_stats_accumulator['deaths'] += me['deaths']
                 my_stats_accumulator['assists'] += me['assists']
@@ -115,12 +121,11 @@ def analyze():
                         duo_tracker[identity]['kills'] += p['kills']
                         duo_tracker[identity]['deaths'] += p['deaths']
                         duo_tracker[identity]['assists'] += p['assists']
-            time.sleep(0.05)
+            time.sleep(0.05) # Petit délai pour l'API
 
         # 4. Verdict Sévère
         st.markdown("---")
         
-        # On cherche le duo le plus fréquent
         best_duo = None
         max_games = 0
         
@@ -129,7 +134,7 @@ def analyze():
                 max_games = stats['games']
                 best_duo = (identity, stats)
 
-        # RÈGLES DURCIES : Si un mec est là 2 fois ou plus
+        # RÈGLES : Si un mec est là 2 fois ou plus
         if best_duo and max_games >= 2:
             identity, stats = best_duo
             
@@ -155,9 +160,9 @@ def analyze():
                 st.metric(f"KDA de {identity.split('#')[0]}", duo_kda, delta=round(duo_kda - my_kda, 2))
 
             if duo_kda > my_kda + 1.0:
-                st.error(f"VERDICT : Il joue 10x mieux que toi. C'est du boosting.")
+                st.error(f"VERDICT : Il joue bien mieux que toi. C'est du boosting.")
             elif winrate < 50:
-                st.warning("VERDICT : C'est ton Duo, mais vous perdez. C'est du 'Emotional Support', pas du boosting.")
+                st.warning("VERDICT : C'est ton Duo, mais vous perdez. Change de mate.")
             else:
                 st.success("VERDICT : Duo solide, niveaux équivalents.")
                 
@@ -165,5 +170,5 @@ def analyze():
             st.markdown("""<div class="result-box clean">SOLO PLAYER</div>""", unsafe_allow_html=True)
             st.write("Aucun joueur croisé plus d'une fois sur les 10 dernières games.")
 
-if st.button('SCANNER (MODE STRICT)', type="primary"):
+if st.button('SCANNER LE JOUEUR', type="primary"):
     analyze()
