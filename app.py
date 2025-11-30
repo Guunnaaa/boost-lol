@@ -102,7 +102,7 @@ st.markdown(
     """, unsafe_allow_html=True
 )
 
-st.markdown('<div class="title-text">Are you a boosted piggy?</div>', unsafe_allow_html=True)
+st.markdown('<div class="title-text">Is it a boosted account ?</div>', unsafe_allow_html=True)
 
 # --- INPUTS ---
 col1, col2 = st.columns([3, 1], gap="medium")
@@ -249,3 +249,4 @@ if st.button('START SCAN (20 GAMES)', type="primary"):
                     else:
                         st.markdown("""<div class="result-box clean">SOLO PLAYER</div>""", unsafe_allow_html=True)
                         st.markdown("<p style='text-align:center;'>No recurring duo detected. You are truly playing alone.</p>", unsafe_allow_html=True)
+
