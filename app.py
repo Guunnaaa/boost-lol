@@ -95,7 +95,7 @@ st.markdown(
     """, unsafe_allow_html=True
 )
 
-st.markdown('<div class="title-text">ARE YOU UNDER TACTICAL ESCORT?</div>', unsafe_allow_html=True)
+st.markdown('<div class="title-text">IS HE/SHE BOOSTED ?</div>', unsafe_allow_html=True)
 
 # --- INPUTS ---
 col1, col2 = st.columns([3, 1], gap="medium")
@@ -245,3 +245,4 @@ if st.button('INITIATE SCAN (20 GAMES)', type="primary"):
                     else:
                         st.markdown("""<div class="result-box clean">LONE WOLF OPERATOR</div>""", unsafe_allow_html=True)
                         st.markdown("<p style='text-align:center;'>No tactical backup detected. You are fighting your own battles.</p>", unsafe_allow_html=True)
+
