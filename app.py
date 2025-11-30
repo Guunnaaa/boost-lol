@@ -4,23 +4,30 @@ import time
 from urllib.parse import quote
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="Boost Detector V10 (EN)", layout="wide")
+st.set_page_config(page_title="Détecteur de Duo V11", layout="wide")
 
-# --- API KEY ---
+# --- CLÉ API ---
 try:
     API_KEY = st.secrets["RIOT_API_KEY"]
 except FileNotFoundError:
-    st.error("⚠️ API Key not found. Please add it to Streamlit secrets.")
+    st.error("⚠️ Clé API introuvable. Ajoute-la dans les secrets Streamlit.")
     st.stop()
 
-# --- BACKGROUND ---
+# --- IMAGES ---
+# 1. Image de fond (Ton image avec les têtes)
 BACKGROUND_IMAGE_URL = "https://media.discordapp.net/attachments/1065027576572518490/1179469739770630164/face_tiled.jpg?ex=657a90f2&is=65681bf2&hm=123"
 
-# --- CSS STYLES ---
+# 2. Image du Clown (Pour le résultat Boosté)
+# Instructions : Upload ton image de clown sur GitHub, clique dessus, "Copy Link" et colle-le ici :
+CLOWN_IMAGE_URL = "https://raw.githubusercontent.com/Guunnaaa/boost-lol/ec823ac445ce3a7d3a7ce970c0b4410a84275169/clown.jpg.jpg"
+# (En attendant que tu mettes le lien, je mets un placeholder vide, ça ne plantera pas)
+
+
+# --- STYLE CSS (DESIGN & INCLUSIF) ---
 st.markdown(
     f"""
     <style>
-    /* Background */
+    /* Fond d'écran */
     .stApp {{
         background-image: url("{BACKGROUND_IMAGE_URL}");
         background-size: 150px;
@@ -28,7 +35,7 @@ st.markdown(
         background-attachment: fixed;
     }}
     
-    /* MAIN CONTAINER */
+    /* BLOC CENTRAL */
     .block-container {{
         max-width: 800px !important;
         padding: 3rem !important;
@@ -39,20 +46,20 @@ st.markdown(
         box-shadow: 0 0 30px rgba(0,0,0,0.9);
     }}
 
-    /* TITLE */
+    /* TITRE */
     .title-text {{
         font-family: 'Segoe UI', sans-serif; 
-        font-size: 45px; font-weight: 900; color: #ffffff;
+        font-size: 42px; font-weight: 900; color: #ffffff;
         text-shadow: 0 0 15px #ff0055; text-align: center; margin-bottom: 30px;
         text-transform: uppercase; letter-spacing: 2px;
     }}
 
-    /* --- THE BIG SCAN BUTTON --- */
+    /* BOUTON SCANNER */
     div.stButton > button {{
         width: 100%;
         background: linear-gradient(45deg, #ff0055, #ff4444);
         color: white;
-        font-size: 26px;
+        font-size: 24px;
         font-weight: 900;
         padding: 15px 0px;
         border: none;
@@ -64,30 +71,18 @@ st.markdown(
     }}
     div.stButton > button:hover {{
         background: linear-gradient(45deg, #ff4444, #ff0055);
-        box-shadow: 0 0 40px rgba(255, 0, 85, 0.8);
         transform: scale(1.02);
         border: 1px solid white;
     }}
-    div.stButton > button:active {{
-        transform: scale(0.98);
-    }}
 
-    /* --- DISCRET DPM LINK --- */
+    /* LIEN DPM */
     .dpm-link {{
-        font-size: 12px;
-        color: #888;
-        text-decoration: none;
-        transition: 0.3s;
-        display: inline-block;
-        margin-top: 5px;
-        font-style: italic;
+        font-size: 12px; color: #888; text-decoration: none;
+        transition: 0.3s; display: inline-block; margin-top: 5px; font-style: italic;
     }}
-    .dpm-link:hover {{
-        color: #ff0055;
-        text-decoration: underline;
-    }}
+    .dpm-link:hover {{ color: #ff0055; text-decoration: underline; }}
 
-    /* RESULTS BOXES */
+    /* RESULTATS */
     .result-box {{ 
         padding: 30px; border-radius: 15px; text-align: center; font-size: 26px; font-weight: bold; color: white; margin-top: 40px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
     }}
@@ -95,38 +90,35 @@ st.markdown(
     .clean {{ background-color: rgba(34, 139, 34, 0.9); border: 3px solid #00ff00; }}
     .stat-box {{ background-color: rgba(40,40,40,0.8); padding: 20px; border-radius: 12px; margin-top: 25px; color: #eee; font-size: 16px; border-left: 4px solid #ff0055; }}
     
-    /* CUSTOM GENERIC */
     p, label, .stMarkdown, .stMetricLabel {{ color: #eee !important; }}
     div[data-testid="stMetricValue"] {{ font-size: 28px !important; color: #00ff00 !important; }}
     </style>
     """, unsafe_allow_html=True
 )
 
-st.markdown('<div class="title-text">Is it a boosted account ?</div>', unsafe_allow_html=True)
+st.markdown('<div class="title-text">AS-TU UNE PROTECTION RAPPROCHÉE ?</div>', unsafe_allow_html=True)
 
 # --- INPUTS ---
 col1, col2 = st.columns([3, 1], gap="medium")
 
 with col1:
-    riot_id_input = st.text_input("Enter Riot ID", placeholder="Name#TAG")
-    # Link translated
-    st.markdown('<a href="https://dpm.lol" target="_blank" class="dpm-link">🔍 Can\'t find the name? Search on dpm.lol</a>', unsafe_allow_html=True)
+    riot_id_input = st.text_input("Riot ID du·de la joueur·euse", placeholder="Nom#TAG")
+    st.markdown('<a href="https://dpm.lol" target="_blank" class="dpm-link">🔍 Pseudo introuvable ? Chercher sur dpm.lol</a>', unsafe_allow_html=True)
 
 with col2:
-    # Regions
-    region_select = st.selectbox("Region", ["EUW1", "NA1", "KR", "EUN1", "TR1"])
+    region_select = st.selectbox("Région", ["EUW1", "NA1", "KR", "EUN1", "TR1"])
 
-# THE BIG BUTTON (Translated)
-if st.button('START SCAN (20 GAMES)', type="primary"):
+# GROS BOUTON
+if st.button('SCANNER LE·LA JOUEUR·EUSE', type="primary"):
     
-    # --- LOGIC ---
+    # --- LOGIQUE ---
     def get_regions(region_code):
         if region_code in ["EUW1", "EUN1", "TR1", "RU"]: return "europe"
         elif region_code == "KR": return "asia"
         else: return "americas"
 
     if not riot_id_input or "#" not in riot_id_input:
-        st.error("⚠️ Invalid format. You must include the #TAG.")
+        st.error("⚠️ Format invalide. N'oublie pas le #TAG.")
     else:
         name_raw, tag = riot_id_input.split("#")
         name_encoded = quote(name_raw)
@@ -135,21 +127,21 @@ if st.button('START SCAN (20 GAMES)', type="primary"):
         # 1. PUUID
         url_puuid = f"https://{routing_region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{name_encoded}/{tag}?api_key={API_KEY}"
         
-        with st.spinner('Scouring Riot servers for evidence...'):
+        with st.spinner('Analyse tactique des dossiers Riot...'):
             resp = requests.get(url_puuid)
             if resp.status_code != 200:
-                st.error(f"API Error ({resp.status_code}). Check the Summoner Name.")
+                st.error(f"Erreur API ({resp.status_code}). Vérifie le pseudo.")
             else:
                 puuid = resp.json().get("puuid")
 
-                # 2. MATCHES
+                # 2. MATCHS
                 url_matches = f"https://{routing_region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue=420&start=0&count=20&api_key={API_KEY}"
                 match_ids = requests.get(url_matches).json()
 
                 if not match_ids:
-                    st.warning("No recent Ranked Solo/Duo games found.")
+                    st.warning("Aucune SoloQ récente trouvée.")
                 else:
-                    # 3. ANALYSIS
+                    # 3. ANALYSE
                     duo_data = {} 
                     progress_bar = st.progress(0)
                     
@@ -170,7 +162,7 @@ if st.button('START SCAN (20 GAMES)', type="primary"):
 
                             for p in participants:
                                 if p['teamId'] == me['teamId'] and p['puuid'] != puuid:
-                                    r_name = p.get('riotIdGameName', p.get('summonerName', 'Unknown'))
+                                    r_name = p.get('riotIdGameName', p.get('summonerName', 'Inconnu·e'))
                                     r_tag = p.get('riotIdTagLine', '')
                                     identity = f"{r_name}#{r_tag}" if r_tag else r_name
                                     
@@ -210,7 +202,7 @@ if st.button('START SCAN (20 GAMES)', type="primary"):
                     if best_duo and max_games >= 4:
                         identity, s = best_duo
                         
-                        # Calculations
+                        # Calculs
                         duo_deaths = s['duo_d'] if s['duo_d'] > 0 else 1
                         duo_kda = round((s['duo_k'] + s['duo_a']) / duo_deaths, 2)
                         
@@ -221,32 +213,36 @@ if st.button('START SCAN (20 GAMES)', type="primary"):
                         my_avg_dmg = int(s['my_dmg'] / s['games'])
                         winrate = int((s['wins'] / s['games']) * 100)
 
-                        st.markdown(f"""<div class="result-box boosted">🚨 SUSPECT DUO: {identity} 🚨</div>""", unsafe_allow_html=True)
-                        st.markdown(f"<p style='text-align:center; font-size:18px;'>Seen <b>{s['games']} times</b> in the last 20 games.</p>", unsafe_allow_html=True)
+                        # VERDICT AVEC IMAGE DU CLOWN
+                        st.markdown(f"""<div class="result-box boosted">🚨 ESCORTE VIP DÉTECTÉE : {identity} 🚨</div>""", unsafe_allow_html=True)
                         
+                        # L'IMAGE DU CLOWN
+                        if "http" in CLOWN_IMAGE_URL:
+                            st.image(CLOWN_IMAGE_URL, caption="Vue d'artiste de la stratégie (Allégorie)", width=500)
+                        
+                        st.markdown(f"<p style='text-align:center; font-size:18px;'>Vu·e <b>{s['games']} fois</b> ensemble (Winrate : {winrate}%).</p>", unsafe_allow_html=True)
                         st.markdown("<br>", unsafe_allow_html=True)
 
                         c1, c2 = st.columns(2)
                         with c1:
-                            st.markdown(f"<h3 style='text-align:center; color:white;'>YOU<br><span style='font-size:16px'>(when with them)</span></h3>", unsafe_allow_html=True)
+                            st.markdown(f"<h3 style='text-align:center; color:white;'>TOI<br><span style='font-size:16px'>(Le·la protégé·e)</span></h3>", unsafe_allow_html=True)
                             st.metric("KDA", my_kda)
-                            st.metric("Damage/Game", my_avg_dmg)
+                            st.metric("Dégâts/Game", my_avg_dmg)
                         with c2:
-                            st.markdown(f"<h3 style='text-align:center; color:red;'>THEM<br><span style='font-size:16px'>(the booster?)</span></h3>", unsafe_allow_html=True)
+                            st.markdown(f"<h3 style='text-align:center; color:red;'>LUI/ELLE<br><span style='font-size:16px'>(Le·la garde du corps)</span></h3>", unsafe_allow_html=True)
                             delta_kda = round(duo_kda - my_kda, 2)
                             delta_dmg = duo_avg_dmg - my_avg_dmg
                             st.metric("KDA", duo_kda, delta=delta_kda)
-                            st.metric("Damage/Game", duo_avg_dmg, delta=delta_dmg)
+                            st.metric("Dégâts/Game", duo_avg_dmg, delta=delta_dmg)
 
-                        st.markdown(f"<div class='stat-box'>Winrate together: <b>{winrate}%</b></div>", unsafe_allow_html=True)
+                        st.markdown(f"<div class='stat-box'>Taux de succès de l'escorte : <b>{winrate}%</b></div>", unsafe_allow_html=True)
 
                         if duo_kda > my_kda + 1.5 or duo_avg_dmg > my_avg_dmg + 5000:
-                            st.error(f"VERDICT: 100% BOOSTED. They do the work, you steal the LP.")
+                            st.error(f"VERDICT : PROTECTION RAPPROCHÉE ACTIVE. Iel fait le travail, tu profites du paysage.")
                         elif winrate < 50:
-                            st.warning("VERDICT: It's your duo, but you're losing. Change strategy.")
+                            st.warning("VERDICT : SYNERGIE DÉFAILLANTE. Vous coulez ensemble.")
                         else:
-                            st.success("VERDICT: Legit Duo. You have the same skill level.")
+                            st.success("VERDICT : DUO SOLIDE. Vous contribuez tou·te·s les deux.")
                     else:
-                        st.markdown("""<div class="result-box clean">SOLO PLAYER</div>""", unsafe_allow_html=True)
-                        st.markdown("<p style='text-align:center;'>No recurring duo detected. You are truly playing alone.</p>", unsafe_allow_html=True)
-
+                        st.markdown("""<div class="result-box clean">SOLO WARRIOR</div>""", unsafe_allow_html=True)
+                        st.markdown("<p style='text-align:center;'>Aucun·e partenaire récurrent·e. Tu te bats seul·e contre tous.</p>", unsafe_allow_html=True)
