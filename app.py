@@ -5,7 +5,7 @@ from urllib.parse import quote
 from collections import Counter
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="Duo Synergy V20", layout="wide")
+st.set_page_config(page_title="Duo Synergy V21", layout="wide")
 
 # --- API KEY ---
 try:
@@ -125,16 +125,20 @@ def get_champ_url(champ_name):
 def render_stat_card(title, my_val, duo_val, unit="", inverse=False):
     """Renders a nice HTML card comparing two values"""
     diff = my_val - duo_val
-    if inverse: diff = -diff # Lower is better for deaths (not used here but ready)
+    if inverse: diff = -diff 
     
     color_class = "diff-pos" if diff >= 0 else "diff-neg"
     sign = "+" if diff > 0 else ""
     
+    # We round for display to avoid ugly floats
+    display_diff = round(diff, 1)
+    if isinstance(my_val, int): display_diff = int(diff)
+
     html = f"""
     <div class="stat-card">
         <div class="card-title">{title}</div>
         <div class="card-value">{my_val}{unit}</div>
-        <div class="{color_class}">{sign}{round(diff, 1)}{unit} vs Duo</div>
+        <div class="{color_class}">{sign}{display_diff}{unit} vs Duo</div>
     </div>
     """
     st.markdown(html, unsafe_allow_html=True)
@@ -251,16 +255,14 @@ if st.button('🚀 RUN ANALYSIS', type="primary"):
             if best_duo and max_g >= 4:
                 g = best_duo['games']
                 
-                # Averages
+                # Averages (Functions to keep code clean)
                 def avg(d, key): return int(d[key] / g)
                 def avg_f(d, key): return round(d[key] / g, 2)
                 
-                # Player A (You) vs Player B (Duo)
                 s_me = best_duo['my_stats_vs']
                 s_duo = best_duo['stats']
                 
                 # THE 4 PILLARS OF PERFORMANCE
-                # We determine who wins each category
                 
                 # 1. Combat (KDA + Dmg)
                 score_combat_me = (s_me['kda'] * 2) + (s_me['dmg'] / 1000)
@@ -278,11 +280,7 @@ if st.button('🚀 RUN ANALYSIS', type="primary"):
                 score_obj_me = s_me['obj']
                 score_obj_duo = s_duo['obj']
                 
-                # Counting "Wins"
-                my_wins = 0
-                duo_wins = 0
-                
-                # Threshold logic: Must beat by 10% to count as a "Win", otherwise it's a tie
+                # Counting "Wins" (Threshold 10%)
                 def check_win(m, d):
                     if m > d * 1.1: return 1, 0
                     if d > m * 1.1: return 0, 1
@@ -296,9 +294,9 @@ if st.button('🚀 RUN ANALYSIS', type="primary"):
                 my_wins = w1 + w2 + w3 + w4
                 duo_wins = d1 + d2 + d3 + d4
                 
-                # FINAL VERDICT based on Pillars
+                # FINAL VERDICT
                 status = "EQUAL"
-                if duo_wins >= my_wins + 2: status = "BOOSTED" # They won 2 more categories than you
+                if duo_wins >= my_wins + 2: status = "BOOSTED"
                 elif my_wins >= duo_wins + 2: status = "BOOSTER"
                 
                 # DISPLAY
@@ -307,11 +305,13 @@ if st.button('🚀 RUN ANALYSIS', type="primary"):
                 with col_res1:
                     st.markdown(f"<h2 style='text-align:center; color:white; margin:0;'>{my_real_name}</h2>", unsafe_allow_html=True)
                     st.markdown(f"<div style='text-align:center; color:#888; margin-bottom:15px;'>YOU</div>", unsafe_allow_html=True)
+                    
+                    # Fix: Passing raw numbers, using unit for 'k'
                     render_stat_card("Combat (KDA)", avg_f(s_me, 'kda'), avg_f(s_duo, 'kda'))
-                    render_stat_card("Damage/Game", f"{avg(s_me, 'dmg')//1000}k", f"{avg(s_duo, 'dmg')//1000}k")
-                    render_stat_card("Gold/Game", f"{avg(s_me, 'gold')//1000}k", f"{avg(s_duo, 'gold')//1000}k")
+                    render_stat_card("Damage/Game", avg(s_me, 'dmg')//1000, avg(s_duo, 'dmg')//1000, unit="k")
+                    render_stat_card("Gold/Game", avg(s_me, 'gold')//1000, avg(s_duo, 'gold')//1000, unit="k")
                     render_stat_card("Vision Score", avg(s_me, 'vis'), avg(s_duo, 'vis'))
-                    render_stat_card("Obj. Damage", f"{avg(s_me, 'obj')//1000}k", f"{avg(s_duo, 'obj')//1000}k")
+                    render_stat_card("Obj. Damage", avg(s_me, 'obj')//1000, avg(s_duo, 'obj')//1000, unit="k")
 
                 with col_res2:
                     st.markdown(f"<h2 style='text-align:center; color:white; margin:0;'>{best_duo['name']}</h2>", unsafe_allow_html=True)
