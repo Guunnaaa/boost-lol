@@ -32,7 +32,7 @@ st.markdown(
     
     /* MAIN CONTAINER */
     .block-container {{
-        max-width: 900px !important;
+        max-width: 950px !important;
         padding: 3rem !important;
         margin: auto !important;
         background-color: rgba(10, 10, 10, 0.95);
@@ -44,28 +44,35 @@ st.markdown(
     /* TITLE */
     .title-text {{
         font-family: 'Segoe UI', sans-serif; 
-        font-size: 42px; font-weight: 900; color: #ffffff;
+        font-size: 45px; font-weight: 900; color: #ffffff;
         text-shadow: 0 0 15px #ff0055; text-align: center; margin-bottom: 30px;
         text-transform: uppercase; letter-spacing: 2px;
     }}
 
-    /* BUTTON */
+    /* --- SUPER BUTTON ANIMATION --- */
+    @keyframes glowing {{
+        0% {{ box-shadow: 0 0 5px #ff0055; }}
+        50% {{ box-shadow: 0 0 25px #ff0055, 0 0 10px #ff4444; }}
+        100% {{ box-shadow: 0 0 5px #ff0055; }}
+    }}
+
     div.stButton > button {{
         width: 100%;
-        background: linear-gradient(45deg, #ff0055, #ff4444);
+        background: linear-gradient(90deg, #ff0055, #ff2222);
         color: white;
-        font-size: 24px;
+        font-size: 26px;
         font-weight: 900;
-        padding: 15px 0px;
+        padding: 18px 0px;
         border: none;
         border-radius: 12px;
         text-transform: uppercase;
-        box-shadow: 0 0 20px rgba(255, 0, 85, 0.4);
+        animation: glowing 2s infinite; /* PULSE ANIMATION */
         transition: 0.3s;
         margin-top: 20px;
+        letter-spacing: 1px;
     }}
     div.stButton > button:hover {{
-        background: linear-gradient(45deg, #ff4444, #ff0055);
+        background: linear-gradient(90deg, #ff2222, #ff0055);
         transform: scale(1.02);
         border: 1px solid white;
     }}
@@ -106,7 +113,7 @@ with col2:
     region_select = st.selectbox("Region", ["EUW1", "NA1", "KR", "EUN1", "TR1"])
 
 # BUTTON
-if st.button('SCAN 20 GAMES', type="primary"):
+if st.button('🚀 LAUNCH TACTICAL ANALYSIS (20 GAMES)', type="primary"):
     
     # --- LOGIC ---
     def get_regions(region_code):
@@ -142,6 +149,9 @@ if st.button('SCAN 20 GAMES', type="primary"):
                     duo_data = {} 
                     progress_bar = st.progress(0)
                     
+                    # We need to capture the exact display name of the searched player from the API
+                    target_display_name = riot_id_input # Default fallback
+                    
                     for i, match_id in enumerate(match_ids):
                         progress_bar.progress((i + 1) / len(match_ids))
                         
@@ -154,6 +164,9 @@ if st.button('SCAN 20 GAMES', type="primary"):
                         me = next((p for p in participants if p['puuid'] == puuid), None)
                         
                         if me:
+                            # Capture real name properly
+                            target_display_name = me.get('riotIdGameName', name_raw)
+
                             # My Stats
                             my_k, my_d, my_a = me['kills'], me['deaths'], me['assists']
                             my_dmg = me['totalDamageDealtToChampions']
@@ -164,11 +177,14 @@ if st.button('SCAN 20 GAMES', type="primary"):
                             for p in participants:
                                 if p['teamId'] == me['teamId'] and p['puuid'] != puuid:
                                     r_name = p.get('riotIdGameName', p.get('summonerName', 'Unknown'))
-                                    r_tag = p.get('riotIdTagLine', '')
-                                    identity = f"{r_name}#{r_tag}" if r_tag else r_name
                                     
-                                    if identity not in duo_data:
-                                        duo_data[identity] = {
+                                    # Simple name for the dict key
+                                    r_tag = p.get('riotIdTagLine', '')
+                                    full_identity = f"{r_name}#{r_tag}" if r_tag else r_name
+                                    
+                                    if full_identity not in duo_data:
+                                        duo_data[full_identity] = {
+                                            'clean_name': r_name, # Just the name without tag for display
                                             'games': 0, 'wins': 0,
                                             'duo_k': 0, 'duo_d': 0, 'duo_a': 0, 'duo_dmg': 0,
                                             'duo_towers': 0, 'duo_obj_dmg': 0,
@@ -179,7 +195,7 @@ if st.button('SCAN 20 GAMES', type="primary"):
                                             'my_champs': []
                                         }
                                     
-                                    stats = duo_data[identity]
+                                    stats = duo_data[full_identity]
                                     stats['games'] += 1
                                     if p['win']: stats['wins'] += 1
                                     
@@ -204,16 +220,19 @@ if st.button('SCAN 20 GAMES', type="primary"):
                     # 4. VERDICT
                     st.markdown("---")
                     
-                    best_duo = None
+                    best_duo_key = None
+                    best_duo_stats = None
                     max_games = 0
 
                     for identity, stats in duo_data.items():
                         if stats['games'] > max_games:
                             max_games = stats['games']
-                            best_duo = (identity, stats)
+                            best_duo_key = identity
+                            best_duo_stats = stats
 
-                    if best_duo and max_games >= 4:
-                        identity, s = best_duo
+                    if best_duo_stats and max_games >= 4:
+                        s = best_duo_stats
+                        duo_name_display = s['clean_name'] # Ex: "Faker" instead of "Faker#KR1"
                         
                         # --- CALCS ---
                         games = s['games']
@@ -250,28 +269,28 @@ if st.button('SCAN 20 GAMES', type="primary"):
 
                         # --- HEADER DISPLAY ---
                         if status == "BOOSTED":
-                             st.markdown(f"""<div class="result-box boosted">🚨 YOU ARE BEING CARRIED 🚨<br><span style='font-size:16px'>by {identity}</span></div>""", unsafe_allow_html=True)
+                             st.markdown(f"""<div class="result-box boosted">🚨 VIP ESCORT DETECTED: {duo_name_display} 🚨</div>""", unsafe_allow_html=True)
                              if "http" in CLOWN_IMAGE_URL:
-                                st.image(CLOWN_IMAGE_URL, caption="Tactical overview", width=500)
+                                st.image(CLOWN_IMAGE_URL, caption=f"Tactical overview of {target_display_name}'s strategy", width=500)
                              
-                             col1_title = "YOU (THE PASSENGER)"
+                             col1_title = f"{target_display_name}<br><span style='font-size:18px'>(The Passenger)</span>"
                              col1_color = "white"
-                             col2_title = "THEM (THE DRIVER)"
+                             col2_title = f"{duo_name_display}<br><span style='font-size:18px'>(The Driver)</span>"
                              col2_color = "red"
 
                         elif status == "BOOSTER":
-                             st.markdown(f"""<div class="result-box booster">👑 YOU ARE CARRYING THEM 👑<br><span style='font-size:16px'>Poor {identity} is heavy...</span></div>""", unsafe_allow_html=True)
+                             st.markdown(f"""<div class="result-box booster">👑 MERCENARY DETECTED: {target_display_name} 👑<br><span style='font-size:16px'>Carrying {duo_name_display} is hard work...</span></div>""", unsafe_allow_html=True)
                              
-                             col1_title = "YOU (THE DRIVER)"
+                             col1_title = f"{target_display_name}<br><span style='font-size:18px'>(The Driver)</span>"
                              col1_color = "#FFD700"
-                             col2_title = "THEM (THE BACKPACK)"
+                             col2_title = f"{duo_name_display}<br><span style='font-size:18px'>(The Backpack)</span>"
                              col2_color = "white"
                         
                         else:
                              st.markdown(f"""<div class="result-box clean">🤝 EQUAL SKILL DETECTED 🤝</div>""", unsafe_allow_html=True)
-                             col1_title = "YOU"
+                             col1_title = target_display_name
                              col1_color = "white"
-                             col2_title = "THEM"
+                             col2_title = duo_name_display
                              col2_color = "white"
 
                         st.markdown(f"<p style='text-align:center; font-size:18px;'>Seen <b>{games} times</b> (Winrate: {winrate}%).</p>", unsafe_allow_html=True)
@@ -280,7 +299,7 @@ if st.button('SCAN 20 GAMES', type="primary"):
                         # --- STATS COLUMNS ---
                         c1, c2 = st.columns(2)
                         
-                        # COLUMN 1 (YOU)
+                        # COLUMN 1 (TARGET)
                         with c1:
                             st.markdown(f"<h3 style='text-align:center; color:{col1_color};'>{col1_title}</h3>", unsafe_allow_html=True)
                             st.markdown(f"<div style='text-align:center; color:#888; margin-bottom:10px;'>Played: {', '.join(my_top_champs)}</div>", unsafe_allow_html=True)
@@ -290,7 +309,7 @@ if st.button('SCAN 20 GAMES', type="primary"):
                             st.metric("Towers/Game", my_avg_towers)
                             st.metric("Obj. Damage/Game", my_avg_obj)
 
-                        # COLUMN 2 (THEM)
+                        # COLUMN 2 (DUO)
                         with c2:
                             st.markdown(f"<h3 style='text-align:center; color:{col2_color};'>{col2_title}</h3>", unsafe_allow_html=True)
                             st.markdown(f"<div style='text-align:center; color:#888; margin-bottom:10px;'>Played: {', '.join(duo_top_champs)}</div>", unsafe_allow_html=True)
@@ -303,12 +322,12 @@ if st.button('SCAN 20 GAMES', type="primary"):
                         # FINAL CLEAR SENTENCE
                         st.markdown("<br>", unsafe_allow_html=True)
                         if status == "BOOSTED":
-                            st.error(f"VERDICT: They have better stats in every game. They are carrying you.")
+                            st.error(f"VERDICT: {duo_name_display} has better stats in every game. {target_display_name} is being carried.")
                         elif status == "BOOSTER":
-                            st.warning(f"VERDICT: You have much better stats. You are boosting them.")
+                            st.warning(f"VERDICT: {target_display_name} has much better stats. They are boosting {duo_name_display}.")
                         else:
-                            st.success("VERDICT: Perfect synergy. You contribute equally.")
+                            st.success(f"VERDICT: Perfect synergy. {target_display_name} and {duo_name_display} contribute equally.")
                             
                     else:
-                        st.markdown("""<div class="result-box clean">SOLO PLAYER</div>""", unsafe_allow_html=True)
+                        st.markdown("""<div class="result-box clean">LONE WOLF OPERATOR</div>""", unsafe_allow_html=True)
                         st.markdown("<p style='text-align:center;'>No recurring duo detected.</p>", unsafe_allow_html=True)
