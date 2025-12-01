@@ -5,7 +5,7 @@ from urllib.parse import quote
 from collections import Counter
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Investigator V22", layout="wide")
+st.set_page_config(page_title="LoL Duo Investigator V23", layout="wide")
 
 # --- API KEY ---
 try:
@@ -23,7 +23,7 @@ DD_VERSION = "13.24.1"
 st.markdown(
     f"""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap');
     
     html, body, [class*="css"] {{
         font-family: 'Inter', sans-serif;
@@ -36,70 +36,86 @@ st.markdown(
         background-attachment: fixed;
     }}
     
-    /* CONTAINER */
+    /* WIDE CONTAINER */
     .block-container {{
-        max-width: 1100px !important;
+        max-width: 1400px !important; /* EXTRA LARGE */
         padding: 2rem !important;
         margin: auto !important;
-        background: rgba(15, 15, 15, 0.95);
-        backdrop-filter: blur(15px);
-        border-radius: 24px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+        background: rgba(12, 12, 12, 0.96);
+        backdrop-filter: blur(20px);
+        border-radius: 0px; /* Full width feel */
+        border-bottom: 2px solid #333;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.9);
     }}
     
-    /* TITLES */
+    /* HEADER */
     .main-title {{
-        font-size: 50px; font-weight: 900; color: white;
-        text-align: center; margin-bottom: 5px; text-transform: uppercase;
-        text-shadow: 0 0 25px rgba(255, 0, 85, 0.5);
+        font-size: 60px; font-weight: 900; color: white;
+        text-align: center; margin-bottom: 20px; text-transform: uppercase;
+        letter-spacing: -2px;
+        background: -webkit-linear-gradient(#eee, #888);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
     }}
     
-    /* VERDICT BOXES (Huge Header) */
-    .verdict-container {{
-        text-align: center;
-        padding: 30px;
-        border-radius: 20px;
-        margin-bottom: 30px;
-        margin-top: 20px;
-        border: 2px solid transparent;
-    }}
-    .v-boosted {{ background: rgba(220, 20, 60, 0.15); border-color: #ff4444; }}
-    .v-booster {{ background: rgba(255, 215, 0, 0.1); border-color: #ffd700; }}
-    .v-clean {{ background: rgba(0, 255, 153, 0.1); border-color: #00ff99; }}
-    
-    .verdict-title {{ font-size: 40px; font-weight: 900; margin-bottom: 10px; letter-spacing: -1px; }}
-    .verdict-sub {{ font-size: 18px; color: #ddd; font-style: italic; }}
-
-    /* STAT CARDS */
-    .stat-card {{
+    /* PLAYER PANELS */
+    .player-panel {{
         background: rgba(255, 255, 255, 0.03);
-        border-radius: 12px;
-        padding: 15px;
-        margin-bottom: 10px;
-        border-left: 3px solid #333;
+        border-radius: 20px;
+        padding: 30px;
+        height: 100%;
+        border: 1px solid rgba(255,255,255,0.05);
     }}
-    .card-label {{ font-size: 12px; color: #888; text-transform: uppercase; font-weight: 700; }}
-    .card-val {{ font-size: 24px; color: white; font-weight: 800; }}
-    .card-diff {{ font-size: 14px; font-weight: 600; margin-top: 2px; }}
+    .panel-header {{
+        text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px;
+    }}
+    .player-name {{ font-size: 36px; font-weight: 900; color: white; margin-bottom: 5px; }}
+    .player-role {{ font-size: 18px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }}
     
+    /* ROLES COLORS */
+    .role-driver {{ color: #FFD700; }}
+    .role-pass {{ color: #ff4444; }}
+    .role-equal {{ color: #00ff99; }}
+
+    /* CHAMPION ICONS */
+    .champ-row {{
+        display: flex; justify-content: center; gap: 20px; margin-bottom: 30px;
+    }}
+    .champ-img {{
+        width: 80px; height: 80px; border-radius: 50%; 
+        border: 3px solid #444; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        transition: transform 0.2s;
+    }}
+    .champ-img:hover {{ transform: scale(1.1); border-color: white; }}
+
+    /* STAT ROWS (CLEAN LIST) */
+    .stat-row {{
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+    }}
+    .stat-label {{ font-size: 16px; color: #aaa; font-weight: 600; }}
+    .stat-value {{ font-size: 22px; color: white; font-weight: 800; }}
+    .stat-diff {{ font-size: 13px; font-weight: 600; margin-left: 10px; }}
     .pos {{ color: #00ff99; }}
     .neg {{ color: #ff4444; }}
+    .neutral {{ color: #666; }}
 
-    /* IMAGES */
-    .champ-row {{ display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; }}
-    .champ-img {{ border-radius: 50%; border: 2px solid #444; width: 60px; height: 60px; transition: 0.3s; }}
-    .champ-img:hover {{ transform: scale(1.1); border-color: white; }}
-    
-    /* FORM BUTTON */
-    .stButton > button {{
-        width: 100%;
-        background: linear-gradient(135deg, #ff0055 0%, #ff2244 100%);
-        color: white; font-weight: 800; padding: 12px; font-size: 18px;
-        border: none; border-radius: 8px; text-transform: uppercase;
-        margin-top: 10px; transition: 0.2s;
+    /* VERDICT BANNER */
+    .verdict-banner {{
+        text-align: center; padding: 40px; margin-bottom: 50px;
+        border-radius: 20px; background: rgba(0,0,0,0.3);
+        border: 2px solid #333;
     }}
-    .stButton > button:hover {{ transform: scale(1.01); box-shadow: 0 0 15px rgba(255,0,85,0.4); }}
+
+    /* BUTTON */
+    .stButton > button {{
+        width: 100%; height: 60px;
+        background: linear-gradient(90deg, #ff0055, #ff2222);
+        color: white; font-size: 24px; font-weight: 800;
+        border: none; border-radius: 12px; text-transform: uppercase;
+        transition: 0.2s;
+    }}
+    .stButton > button:hover {{ transform: translateY(-2px); box-shadow: 0 10px 30px rgba(255,0,85,0.4); }}
     
     /* UTILS */
     p, label {{ color: #eee !important; }}
@@ -109,39 +125,50 @@ st.markdown(
 
 st.markdown('<div class="main-title">LoL Duo Investigator</div>', unsafe_allow_html=True)
 
-# --- FORMULAIRE (POUR QUE "ENTRÉE" MARCHE) ---
+# --- FORMULAIRE ---
 with st.form("search_form"):
-    c1, c2 = st.columns([3, 1], gap="medium")
+    c1, c2 = st.columns([4, 1], gap="medium")
     with c1:
         riot_id_input = st.text_input("Riot ID", placeholder="Exemple: Sardoche#EUW")
     with c2:
         region_select = st.selectbox("Region", ["EUW1", "NA1", "KR", "EUN1", "TR1"])
     
-    # Le bouton est maintenant dans le formulaire = Touche Entrée active
     submitted = st.form_submit_button("🚀 LANCER L'ANALYSE")
 
 
 # --- FONCTIONS ---
 def get_champ_url(champ_name):
+    # Sécurité si le nom est vide
+    if not champ_name: return "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Poro_0.jpg"
+    
     clean = champ_name.replace(" ", "").replace("'", "").replace(".", "")
     if clean == "Wukong": clean = "MonkeyKing"
     if clean == "RenataGlasc": clean = "Renata"
+    if clean == "Nunu&Willump": clean = "Nunu"
     return f"https://ddragon.leagueoflegends.com/cdn/{DD_VERSION}/img/champion/{clean}.png"
 
-def render_comparison(title, val_a, val_b, unit=""):
-    """Affiche une carte de stat avec la différence A vs B"""
-    diff = val_a - val_b
-    diff_display = round(diff, 1)
-    if isinstance(val_a, int): diff_display = int(diff)
-    
-    color_class = "pos" if diff >= 0 else "neg"
-    sign = "+" if diff > 0 else ""
-    
+def render_stat_row(label, val, diff, unit=""):
+    """Affiche une ligne de stat propre"""
+    # Gestion des couleurs de diff
+    if diff > 0:
+        diff_html = f"<span class='stat-diff pos'>+{round(diff, 1)}{unit}</span>"
+    elif diff < 0:
+        diff_html = f"<span class='stat-diff neg'>{round(diff, 1)}{unit}</span>"
+    else:
+        diff_html = f"<span class='stat-diff neutral'>=</span>"
+
+    # Affichage valeur
+    val_display = f"{val}{unit}"
+    if isinstance(val, int) and val > 1000:
+        val_display = f"{val/1000:.1f}k"
+
     st.markdown(f"""
-    <div class="stat-card" style="border-left-color: {'#00ff99' if diff>=0 else '#ff4444'};">
-        <div class="card-label">{title}</div>
-        <div class="card-val">{val_a}{unit}</div>
-        <div class="card-diff {color_class}">{sign}{diff_display}{unit} vs Mate</div>
+    <div class="stat-row">
+        <div class="stat-label">{label}</div>
+        <div style="display:flex; align-items:baseline;">
+            <div class="stat-value">{val_display}</div>
+            {diff_html}
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -185,7 +212,7 @@ if submitted:
             # 2. ANALYSIS LOOP
             duo_data = {} 
             progress_bar = st.progress(0)
-            target_name = riot_id_input # Fallback name
+            target_name = riot_id_input 
             
             for i, match_id in enumerate(match_ids):
                 progress_bar.progress((i + 1) / len(match_ids))
@@ -194,7 +221,6 @@ if submitted:
                 data = requests.get(url_det).json()
                 if 'info' not in data: continue
                 
-                game_duration = data['info']['gameDuration'] 
                 participants = data['info']['participants']
                 
                 me = next((p for p in participants if p['puuid'] == puuid), None)
@@ -208,8 +234,8 @@ if submitted:
                         'gold': me['goldEarned'],
                         'vis': me['visionScore'],
                         'obj': me.get('damageDealtToObjectives', 0),
-                        'champ': me['championName'],
-                        'win': me['win']
+                        'towers': me.get('challenges', {}).get('turretTakedowns', 0),
+                        'champ': me['championName']
                     }
 
                     for p in participants:
@@ -220,10 +246,10 @@ if submitted:
                                 duo_data[full_id] = {
                                     'name': p.get('riotIdGameName'),
                                     'games': 0, 'wins': 0,
-                                    'stats': {'kda':0, 'dmg':0, 'gold':0, 'vis':0, 'obj':0},
-                                    'my_stats_vs': {'kda':0, 'dmg':0, 'gold':0, 'vis':0, 'obj':0},
-                                    'champs': [],      # Duo champs
-                                    'my_champs': []    # My champs with this duo
+                                    'stats': {'kda':0, 'dmg':0, 'gold':0, 'vis':0, 'obj':0, 'towers':0},
+                                    'my_stats_vs': {'kda':0, 'dmg':0, 'gold':0, 'vis':0, 'obj':0, 'towers':0},
+                                    'champs': [],      
+                                    'my_champs': []    
                                 }
                             
                             d = duo_data[full_id]
@@ -232,25 +258,25 @@ if submitted:
                             d['champs'].append(p['championName'])
                             d['my_champs'].append(my_s['champ'])
                             
-                            # Accumulate Duo Stats
+                            # Accumulate
                             d['stats']['kda'] += (p['kills'] + p['assists']) / max(1, p['deaths'])
                             d['stats']['dmg'] += p['totalDamageDealtToChampions']
                             d['stats']['gold'] += p['goldEarned']
                             d['stats']['vis'] += p['visionScore']
                             d['stats']['obj'] += p.get('damageDealtToObjectives', 0)
+                            d['stats']['towers'] += p.get('challenges', {}).get('turretTakedowns', 0)
                             
-                            # Accumulate My Stats (vs this Duo)
                             d['my_stats_vs']['kda'] += my_s['kda']
                             d['my_stats_vs']['dmg'] += my_s['dmg']
                             d['my_stats_vs']['gold'] += my_s['gold']
                             d['my_stats_vs']['vis'] += my_s['vis']
                             d['my_stats_vs']['obj'] += my_s['obj']
+                            d['my_stats_vs']['towers'] += my_s['towers']
                             
                 time.sleep(0.05)
 
             # 3. FINAL PROCESSING
             progress_bar.empty()
-            st.markdown("---")
             
             best_duo = None
             max_g = 0
@@ -270,18 +296,19 @@ if submitted:
                 s_me = best_duo['my_stats_vs']
                 s_duo = best_duo['stats']
                 
-                # --- PILLAR LOGIC ---
+                # PILLARS
+                # 1. Combat
                 score_combat_me = (s_me['kda'] * 2) + (s_me['dmg'] / 1000)
                 score_combat_duo = (s_duo['kda'] * 2) + (s_duo['dmg'] / 1000)
-                
+                # 2. Eco
                 score_eco_me = s_me['gold']
                 score_eco_duo = s_duo['gold']
-                
+                # 3. Vision
                 score_vis_me = s_me['vis']
                 score_vis_duo = s_duo['vis']
-                
-                score_obj_me = s_me['obj']
-                score_obj_duo = s_duo['obj']
+                # 4. Obj
+                score_obj_me = s_me['obj'] + (s_me['towers'] * 2000) # Towers worth 2k dmg score
+                score_obj_duo = s_duo['obj'] + (s_duo['towers'] * 2000)
                 
                 def check_win(m, d):
                     if m > d * 1.1: return 1, 0
@@ -302,78 +329,104 @@ if submitted:
                 
                 winrate = int((best_duo['wins']/g)*100)
 
-                # --- 1. DISPLAY VERDICT (BIG HEADER) ---
+                # --- HEADER / VERDICT ---
+                st.markdown("<br>", unsafe_allow_html=True)
+                
                 if status == "BOOSTED":
-                    st.markdown(f"""
-                    <div class="verdict-container v-boosted">
-                        <div class="verdict-title" style="color:#ff4444">🚨 PASSENGER DETECTED 🚨</div>
-                        <div class="verdict-sub">{target_name} is being carried by {duo_name}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    if "http" in CLOWN_IMAGE_URL: 
-                        col_img1, col_img2, col_img3 = st.columns([1,2,1])
-                        with col_img2: st.image(CLOWN_IMAGE_URL, use_column_width=True)
+                    header_color = "#ff4444"
+                    title_text = "PASSENGER DETECTED"
+                    sub_text = f"{target_name} is carried by {duo_name}"
+                    
+                    if "http" in CLOWN_IMAGE_URL:
+                        c1, c2, c3 = st.columns([1, 1, 1])
+                        with c2: st.image(CLOWN_IMAGE_URL, use_column_width=True)
 
                 elif status == "BOOSTER":
-                    st.markdown(f"""
-                    <div class="verdict-container v-booster">
-                        <div class="verdict-title" style="color:#ffd700">👑 DRIVER DETECTED 👑</div>
-                        <div class="verdict-sub">{target_name} is boosting {duo_name}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    header_color = "#FFD700"
+                    title_text = "DRIVER DETECTED"
+                    sub_text = f"{target_name} is boosting {duo_name}"
                 else:
+                    header_color = "#00ff99"
+                    title_text = "SOLID DUO"
+                    sub_text = "Perfect Synergy"
+
+                st.markdown(f"""
+                <div class="verdict-banner" style="border-color:{header_color}">
+                    <div style="font-size:48px; font-weight:900; color:{header_color}; margin-bottom:10px;">{title_text}</div>
+                    <div style="font-size:20px; color:#ddd;">{sub_text}</div>
+                    <div style="margin-top:20px; font-size:16px; color:#888;">Based on {g} games • {winrate}% Winrate</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # --- MAIN STATS SPLIT ---
+                
+                col_left, col_mid, col_right = st.columns([10, 1, 10]) # Split with a gap
+                
+                # --- LEFT PANEL (ME) ---
+                with col_left:
                     st.markdown(f"""
-                    <div class="verdict-container v-clean">
-                        <div class="verdict-title" style="color:#00ff99">🤝 SOLID PARTNERSHIP 🤝</div>
-                        <div class="verdict-sub">Equal contribution between {target_name} and {duo_name}</div>
-                    </div>
+                    <div class="player-panel">
+                        <div class="panel-header" style="border-color:{header_color if status=='BOOSTER' else '#333'}">
+                            <div class="player-name">{target_name}</div>
+                            <div class="player-role {'role-driver' if status=='BOOSTER' else ('role-pass' if status=='BOOSTED' else 'role-equal')}">
+                                {"DRIVER" if status=="BOOSTER" else ("PASSENGER" if status=="BOOSTED" else "PARTNER")}
+                            </div>
+                        </div>
                     """, unsafe_allow_html=True)
+                    
+                    # Champs
+                    top_champs = [c[0] for c in Counter(best_duo['my_champs']).most_common(3)]
+                    html_champs = "<div class='champ-row'>"
+                    for ch in top_champs:
+                        html_champs += f"<img src='{get_champ_url(ch)}' class='champ-img'>"
+                    html_champs += "</div>"
+                    st.markdown(html_champs, unsafe_allow_html=True)
+                    
+                    # Stats List
+                    render_stat_row("KDA", avg_f(s_me, 'kda'), avg_f(s_me, 'kda') - avg_f(s_duo, 'kda'))
+                    render_stat_row("Damage", avg(s_me, 'dmg'), avg(s_me, 'dmg') - avg(s_duo, 'dmg'))
+                    render_stat_row("Gold", avg(s_me, 'gold'), avg(s_me, 'gold') - avg(s_duo, 'gold'))
+                    render_stat_row("Vision", avg(s_me, 'vis'), avg(s_me, 'vis') - avg(s_duo, 'vis'))
+                    render_stat_row("Obj Dmg", avg(s_me, 'obj'), avg(s_me, 'obj') - avg(s_duo, 'obj'))
+                    render_stat_row("Towers", avg_f(s_me, 'towers'), avg_f(s_me, 'towers') - avg_f(s_duo, 'towers'))
 
-                # --- 2. CHAMPIONS ROW ---
-                st.markdown("<br>", unsafe_allow_html=True)
-                c_row1, c_row2 = st.columns(2)
-                
-                # Get Top 3 Champs for ME
-                my_top = [c[0] for c in Counter(best_duo['my_champs']).most_common(3)]
-                # Get Top 3 Champs for DUO
-                duo_top = [c[0] for c in Counter(best_duo['champs']).most_common(3)]
-                
-                with c_row1:
-                    st.markdown(f"<h3 style='text-align:center'>{target_name}</h3>", unsafe_allow_html=True)
-                    cols = st.columns(3)
-                    for idx, ch in enumerate(my_top):
-                        with cols[idx]: st.image(get_champ_url(ch), use_column_width=True)
-                        
-                with c_row2:
-                    st.markdown(f"<h3 style='text-align:center'>{duo_name}</h3>", unsafe_allow_html=True)
-                    cols = st.columns(3)
-                    for idx, ch in enumerate(duo_top):
-                        with cols[idx]: st.image(get_champ_url(ch), use_column_width=True)
+                    st.markdown("</div>", unsafe_allow_html=True) # Close panel
 
-                # --- 3. DETAILED STATS COLUMNS ---
-                st.markdown("<br><hr><br>", unsafe_allow_html=True)
-                col_stats1, col_stats2 = st.columns(2)
-                
-                with col_stats1:
-                    st.markdown(f"<div style='text-align:center; color:#888; margin-bottom:10px'>STATS DE {target_name}</div>", unsafe_allow_html=True)
-                    render_comparison("Combat (KDA)", avg_f(s_me, 'kda'), avg_f(s_duo, 'kda'))
-                    render_comparison("Damage/Game", avg(s_me, 'dmg')//1000, avg(s_duo, 'dmg')//1000, unit="k")
-                    render_comparison("Gold/Game", avg(s_me, 'gold')//1000, avg(s_duo, 'gold')//1000, unit="k")
-                    render_comparison("Vision Score", avg(s_me, 'vis'), avg(s_duo, 'vis'))
-                    render_comparison("Obj. Damage", avg(s_me, 'obj')//1000, avg(s_duo, 'obj')//1000, unit="k")
+                # --- RIGHT PANEL (DUO) ---
+                with col_right:
+                    st.markdown(f"""
+                    <div class="player-panel">
+                        <div class="panel-header" style="border-color:{header_color if status=='BOOSTED' else '#333'}">
+                            <div class="player-name">{duo_name}</div>
+                            <div class="player-role {'role-driver' if status=='BOOSTED' else ('role-pass' if status=='BOOSTER' else 'role-equal')}">
+                                {"DRIVER" if status=="BOOSTED" else ("PASSENGER" if status=="BOOSTER" else "PARTNER")}
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Champs
+                    top_champs_duo = [c[0] for c in Counter(best_duo['champs']).most_common(3)]
+                    html_champs_d = "<div class='champ-row'>"
+                    for ch in top_champs_duo:
+                        html_champs_d += f"<img src='{get_champ_url(ch)}' class='champ-img'>"
+                    html_champs_d += "</div>"
+                    st.markdown(html_champs_d, unsafe_allow_html=True)
+                    
+                    # Stats List (Inversed Diff)
+                    render_stat_row("KDA", avg_f(s_duo, 'kda'), avg_f(s_duo, 'kda') - avg_f(s_me, 'kda'))
+                    render_stat_row("Damage", avg(s_duo, 'dmg'), avg(s_duo, 'dmg') - avg(s_me, 'dmg'))
+                    render_stat_row("Gold", avg(s_duo, 'gold'), avg(s_duo, 'gold') - avg(s_me, 'gold'))
+                    render_stat_row("Vision", avg(s_duo, 'vis'), avg(s_duo, 'vis') - avg(s_me, 'vis'))
+                    render_stat_row("Obj Dmg", avg(s_duo, 'obj'), avg(s_duo, 'obj') - avg(s_me, 'obj'))
+                    render_stat_row("Towers", avg_f(s_duo, 'towers'), avg_f(s_duo, 'towers') - avg_f(s_me, 'towers'))
 
-                with col_stats2:
-                    st.markdown(f"<div style='text-align:center; color:#888; margin-bottom:10px'>STATS DE {duo_name}</div>", unsafe_allow_html=True)
-                    # We render stats from Duo perspective
-                    render_comparison("Combat (KDA)", avg_f(s_duo, 'kda'), avg_f(s_me, 'kda'))
-                    render_comparison("Damage/Game", avg(s_duo, 'dmg')//1000, avg(s_me, 'dmg')//1000, unit="k")
-                    render_comparison("Gold/Game", avg(s_duo, 'gold')//1000, avg(s_me, 'gold')//1000, unit="k")
-                    render_comparison("Vision Score", avg(s_duo, 'vis'), avg(s_me, 'vis'))
-                    render_comparison("Obj. Damage", avg(s_duo, 'obj')//1000, avg(s_me, 'obj')//1000, unit="k")
-
-                # Recap Pilliers
-                st.info(f"📊 **Analyse des Piliers :** {target_name} gagne sur **{my_wins}** aspects / {duo_name} gagne sur **{duo_wins}** aspects.")
+                    st.markdown("</div>", unsafe_allow_html=True) # Close panel
 
             else:
-                st.markdown("""<div class="verdict-container v-clean"><div class="verdict-title">SOLO PLAYER</div></div>""", unsafe_allow_html=True)
-                st.markdown("<p style='text-align:center;'>Aucun duo récurrent détecté sur les 20 dernières parties.</p>", unsafe_allow_html=True)
+                st.markdown("<br><br>", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div class="verdict-banner" style="border-color:#00ff99">
+                    <div style="font-size:32px; font-weight:900; color:#00ff99;">LONE WOLF DETECTED</div>
+                    <div style="font-size:18px; color:#ddd; margin-top:10px;">No recurring duo partner found in the last 20 games.</div>
+                </div>
+                """, unsafe_allow_html=True)
