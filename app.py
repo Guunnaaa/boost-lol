@@ -5,7 +5,7 @@ from urllib.parse import quote
 from collections import Counter
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="Who is carrying?", layout="wide")
+st.set_page_config(page_title="True Carry Detector", layout="wide")
 
 # --- API KEY ---
 try:
@@ -49,7 +49,7 @@ st.markdown(
         text-transform: uppercase; letter-spacing: 2px;
     }}
 
-    /* --- SUPER BUTTON ANIMATION --- */
+    /* GLOWING BUTTON */
     @keyframes glowing {{
         0% {{ box-shadow: 0 0 5px #ff0055; }}
         50% {{ box-shadow: 0 0 25px #ff0055, 0 0 10px #ff4444; }}
@@ -66,7 +66,7 @@ st.markdown(
         border: none;
         border-radius: 12px;
         text-transform: uppercase;
-        animation: glowing 2s infinite; /* PULSE ANIMATION */
+        animation: glowing 2s infinite;
         transition: 0.3s;
         margin-top: 20px;
         letter-spacing: 1px;
@@ -92,8 +92,6 @@ st.markdown(
     .booster {{ background-color: rgba(255, 215, 0, 0.15); border: 3px solid #FFD700; color: #FFD700; }} 
     .clean {{ background-color: rgba(34, 139, 34, 0.9); border: 3px solid #00ff00; }}
     
-    .champ-list {{ font-size: 14px; color: #aaa; font-style: italic; margin-top: 5px; }}
-
     p, label, .stMarkdown, .stMetricLabel {{ color: #eee !important; }}
     div[data-testid="stMetricValue"] {{ font-size: 28px !important; color: #00ff00 !important; }}
     </style>
@@ -148,9 +146,7 @@ if st.button('🚀 LAUNCH TACTICAL ANALYSIS (20 GAMES)', type="primary"):
                     # 3. ANALYSIS
                     duo_data = {} 
                     progress_bar = st.progress(0)
-                    
-                    # We need to capture the exact display name of the searched player from the API
-                    target_display_name = riot_id_input # Default fallback
+                    target_display_name = riot_id_input 
                     
                     for i, match_id in enumerate(match_ids):
                         progress_bar.progress((i + 1) / len(match_ids))
@@ -164,32 +160,29 @@ if st.button('🚀 LAUNCH TACTICAL ANALYSIS (20 GAMES)', type="primary"):
                         me = next((p for p in participants if p['puuid'] == puuid), None)
                         
                         if me:
-                            # Capture real name properly
                             target_display_name = me.get('riotIdGameName', name_raw)
 
                             # My Stats
                             my_k, my_d, my_a = me['kills'], me['deaths'], me['assists']
                             my_dmg = me['totalDamageDealtToChampions']
                             my_champ = me['championName']
+                            # Objectives matter now!
                             my_towers = me.get('challenges', {}).get('turretTakedowns', 0)
                             my_obj_dmg = me.get('damageDealtToObjectives', 0)
 
                             for p in participants:
                                 if p['teamId'] == me['teamId'] and p['puuid'] != puuid:
                                     r_name = p.get('riotIdGameName', p.get('summonerName', 'Unknown'))
-                                    
-                                    # Simple name for the dict key
                                     r_tag = p.get('riotIdTagLine', '')
                                     full_identity = f"{r_name}#{r_tag}" if r_tag else r_name
                                     
                                     if full_identity not in duo_data:
                                         duo_data[full_identity] = {
-                                            'clean_name': r_name, # Just the name without tag for display
+                                            'clean_name': r_name,
                                             'games': 0, 'wins': 0,
                                             'duo_k': 0, 'duo_d': 0, 'duo_a': 0, 'duo_dmg': 0,
                                             'duo_towers': 0, 'duo_obj_dmg': 0,
                                             'duo_champs': [],
-                                            
                                             'my_k': 0, 'my_d': 0, 'my_a': 0, 'my_dmg': 0,
                                             'my_towers': 0, 'my_obj_dmg': 0,
                                             'my_champs': []
@@ -232,11 +225,10 @@ if st.button('🚀 LAUNCH TACTICAL ANALYSIS (20 GAMES)', type="primary"):
 
                     if best_duo_stats and max_games >= 4:
                         s = best_duo_stats
-                        duo_name_display = s['clean_name'] # Ex: "Faker" instead of "Faker#KR1"
-                        
-                        # --- CALCS ---
+                        duo_name_display = s['clean_name']
                         games = s['games']
                         
+                        # --- RAW STATS ---
                         duo_deaths = s['duo_d'] if s['duo_d'] > 0 else 1
                         duo_kda = round((s['duo_k'] + s['duo_a']) / duo_deaths, 2)
                         my_deaths = s['my_d'] if s['my_d'] > 0 else 1
@@ -256,22 +248,29 @@ if st.button('🚀 LAUNCH TACTICAL ANALYSIS (20 GAMES)', type="primary"):
                         my_top_champs = [c[0] for c in Counter(s['my_champs']).most_common(3)]
                         duo_top_champs = [c[0] for c in Counter(s['duo_champs']).most_common(3)]
                         
-                        # --- DETERMINE ROLES ---
-                        status = "CLEAN"
+                        # --- SCORING SYSTEM (FAIRNESS LOGIC) ---
+                        # Formula: (KDA * 3) + (Dmg/1000) + (ObjDmg/1000) + (Towers * 2)
                         
-                        # Conditions to be "BOOSTED"
-                        if duo_kda > my_kda + 1.2 or duo_avg_dmg > my_avg_dmg + 4000:
+                        my_score = (my_kda * 3) + (my_avg_dmg / 1000) + (my_avg_obj / 1000) + (my_avg_towers * 2)
+                        duo_score = (duo_kda * 3) + (duo_avg_dmg / 1000) + (duo_avg_obj / 1000) + (duo_avg_towers * 2)
+                        
+                        score_diff = duo_score - my_score
+                        
+                        # DETERMINE STATUS BASED ON SCORE GAP
+                        # Needs a significant gap (> 15% diff approx) to be called "Boosted"
+                        
+                        if score_diff > 8: # Duo score is much higher
                             status = "BOOSTED"
-                        
-                        # Conditions to be "BOOSTER"
-                        elif my_kda > duo_kda + 1.2 or my_avg_dmg > duo_avg_dmg + 4000:
+                        elif score_diff < -8: # My score is much higher
                             status = "BOOSTER"
+                        else:
+                            status = "CLEAN"
 
                         # --- HEADER DISPLAY ---
                         if status == "BOOSTED":
                              st.markdown(f"""<div class="result-box boosted">🚨 VIP ESCORT DETECTED: {duo_name_display} 🚨</div>""", unsafe_allow_html=True)
                              if "http" in CLOWN_IMAGE_URL:
-                                st.image(CLOWN_IMAGE_URL, caption=f"Tactical overview of {target_display_name}'s strategy", width=500)
+                                st.image(CLOWN_IMAGE_URL, caption=f"Tactical overview", width=500)
                              
                              col1_title = f"{target_display_name}<br><span style='font-size:18px'>(The Passenger)</span>"
                              col1_color = "white"
@@ -279,7 +278,7 @@ if st.button('🚀 LAUNCH TACTICAL ANALYSIS (20 GAMES)', type="primary"):
                              col2_color = "red"
 
                         elif status == "BOOSTER":
-                             st.markdown(f"""<div class="result-box booster">👑 MERCENARY DETECTED: {target_display_name} 👑<br><span style='font-size:16px'>Carrying {duo_name_display} is hard work...</span></div>""", unsafe_allow_html=True)
+                             st.markdown(f"""<div class="result-box booster">👑 MERCENARY DETECTED: {target_display_name} 👑<br><span style='font-size:16px'>Your back must hurt...</span></div>""", unsafe_allow_html=True)
                              
                              col1_title = f"{target_display_name}<br><span style='font-size:18px'>(The Driver)</span>"
                              col1_color = "#FFD700"
@@ -319,14 +318,14 @@ if st.button('🚀 LAUNCH TACTICAL ANALYSIS (20 GAMES)', type="primary"):
                             st.metric("Towers/Game", duo_avg_towers, delta=round(duo_avg_towers - my_avg_towers, 1))
                             st.metric("Obj. Damage/Game", duo_avg_obj, delta=duo_avg_obj - my_avg_obj)
 
-                        # FINAL CLEAR SENTENCE
+                        # FINAL SENTENCE
                         st.markdown("<br>", unsafe_allow_html=True)
                         if status == "BOOSTED":
-                            st.error(f"VERDICT: {duo_name_display} has better stats in every game. {target_display_name} is being carried.")
+                            st.error(f"VERDICT: {duo_name_display} has a higher overall impact score ({int(duo_score)} vs {int(my_score)}).")
                         elif status == "BOOSTER":
-                            st.warning(f"VERDICT: {target_display_name} has much better stats. They are boosting {duo_name_display}.")
+                            st.warning(f"VERDICT: {target_display_name} has a higher overall impact score ({int(my_score)} vs {int(duo_score)}).")
                         else:
-                            st.success(f"VERDICT: Perfect synergy. {target_display_name} and {duo_name_display} contribute equally.")
+                            st.success(f"VERDICT: Scores are very close ({int(my_score)} vs {int(duo_score)}). Perfect synergy.")
                             
                     else:
                         st.markdown("""<div class="result-box clean">LONE WOLF OPERATOR</div>""", unsafe_allow_html=True)
