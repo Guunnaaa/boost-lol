@@ -5,7 +5,7 @@ from urllib.parse import quote
 from collections import Counter
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="Tactical Duo Analyzer V14", layout="wide")
+st.set_page_config(page_title="Who is carrying?", layout="wide")
 
 # --- API KEY ---
 try:
@@ -77,15 +77,13 @@ st.markdown(
     }}
     .dpm-link:hover {{ color: #ff0055; text-decoration: underline; }}
 
-    /* RESULTS */
+    /* RESULTS BOXES */
     .result-box {{ 
-        padding: 30px; border-radius: 15px; text-align: center; font-size: 26px; font-weight: bold; color: white; margin-top: 40px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        padding: 20px; border-radius: 15px; text-align: center; font-size: 24px; font-weight: bold; color: white; margin-top: 30px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
     }}
     .boosted {{ background-color: rgba(220, 20, 60, 0.9); border: 3px solid #ff4444; }}
-    .booster {{ background-color: rgba(255, 215, 0, 0.2); border: 3px solid #FFD700; color: #FFD700; }} /* Gold for booster */
+    .booster {{ background-color: rgba(255, 215, 0, 0.15); border: 3px solid #FFD700; color: #FFD700; }} 
     .clean {{ background-color: rgba(34, 139, 34, 0.9); border: 3px solid #00ff00; }}
-    
-    .stat-box {{ background-color: rgba(40,40,40,0.8); padding: 20px; border-radius: 12px; margin-top: 25px; color: #eee; font-size: 16px; border-left: 4px solid #ff0055; }}
     
     .champ-list {{ font-size: 14px; color: #aaa; font-style: italic; margin-top: 5px; }}
 
@@ -108,7 +106,7 @@ with col2:
     region_select = st.selectbox("Region", ["EUW1", "NA1", "KR", "EUN1", "TR1"])
 
 # BUTTON
-if st.button('INITIATE TACTICAL SCAN (20 GAMES)', type="primary"):
+if st.button('SCAN 20 GAMES', type="primary"):
     
     # --- LOGIC ---
     def get_regions(region_code):
@@ -126,7 +124,7 @@ if st.button('INITIATE TACTICAL SCAN (20 GAMES)', type="primary"):
         # 1. PUUID
         url_puuid = f"https://{routing_region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{name_encoded}/{tag}?api_key={API_KEY}"
         
-        with st.spinner('Extracting combat data...'):
+        with st.spinner('Analyzing combat data...'):
             resp = requests.get(url_puuid)
             if resp.status_code != 200:
                 st.error(f"API Error ({resp.status_code}). Check Riot ID.")
@@ -160,7 +158,6 @@ if st.button('INITIATE TACTICAL SCAN (20 GAMES)', type="primary"):
                             my_k, my_d, my_a = me['kills'], me['deaths'], me['assists']
                             my_dmg = me['totalDamageDealtToChampions']
                             my_champ = me['championName']
-                            # Objectives (Towers + Damage to Obj)
                             my_towers = me.get('challenges', {}).get('turretTakedowns', 0)
                             my_obj_dmg = me.get('damageDealtToObjectives', 0)
 
@@ -186,7 +183,6 @@ if st.button('INITIATE TACTICAL SCAN (20 GAMES)', type="primary"):
                                     stats['games'] += 1
                                     if p['win']: stats['wins'] += 1
                                     
-                                    # Duo Stats
                                     stats['duo_k'] += p['kills']
                                     stats['duo_d'] += p['deaths']
                                     stats['duo_a'] += p['assists']
@@ -195,7 +191,6 @@ if st.button('INITIATE TACTICAL SCAN (20 GAMES)', type="primary"):
                                     stats['duo_obj_dmg'] += p.get('damageDealtToObjectives', 0)
                                     stats['duo_champs'].append(p['championName'])
                                     
-                                    # My Stats (With this duo)
                                     stats['my_k'] += my_k
                                     stats['my_d'] += my_d
                                     stats['my_a'] += my_a
@@ -220,20 +215,17 @@ if st.button('INITIATE TACTICAL SCAN (20 GAMES)', type="primary"):
                     if best_duo and max_games >= 4:
                         identity, s = best_duo
                         
-                        # --- AVERAGES & CALCS ---
+                        # --- CALCS ---
                         games = s['games']
                         
-                        # KDA
                         duo_deaths = s['duo_d'] if s['duo_d'] > 0 else 1
                         duo_kda = round((s['duo_k'] + s['duo_a']) / duo_deaths, 2)
                         my_deaths = s['my_d'] if s['my_d'] > 0 else 1
                         my_kda = round((s['my_k'] + s['my_a']) / my_deaths, 2)
                         
-                        # Damage
                         duo_avg_dmg = int(s['duo_dmg'] / games)
                         my_avg_dmg = int(s['my_dmg'] / games)
                         
-                        # Objectives (Towers & Dmg)
                         duo_avg_towers = round(s['duo_towers'] / games, 1)
                         my_avg_towers = round(s['my_towers'] / games, 1)
                         
@@ -242,71 +234,81 @@ if st.button('INITIATE TACTICAL SCAN (20 GAMES)', type="primary"):
                         
                         winrate = int((s['wins'] / games) * 100)
 
-                        # Top Champs
                         my_top_champs = [c[0] for c in Counter(s['my_champs']).most_common(3)]
                         duo_top_champs = [c[0] for c in Counter(s['duo_champs']).most_common(3)]
                         
-                        # --- DISPLAY ---
+                        # --- DETERMINE ROLES ---
+                        status = "CLEAN"
                         
-                        # LOGIC FOR "WHO IS THE BOOSTER?"
-                        is_boosted = False
-                        is_booster = False
+                        # Conditions to be "BOOSTED"
+                        if duo_kda > my_kda + 1.2 or duo_avg_dmg > my_avg_dmg + 4000:
+                            status = "BOOSTED"
                         
-                        # If Duo KDA is 1.5 higher OR Damage 5000 higher
-                        if duo_kda > my_kda + 1.5 or duo_avg_dmg > my_avg_dmg + 5000:
-                            is_boosted = True
-                        # If MY KDA is 1.5 higher OR MY Damage 5000 higher
-                        elif my_kda > duo_kda + 1.5 or my_avg_dmg > duo_avg_dmg + 5000:
-                            is_booster = True
+                        # Conditions to be "BOOSTER"
+                        elif my_kda > duo_kda + 1.2 or my_avg_dmg > duo_avg_dmg + 4000:
+                            status = "BOOSTER"
 
-                        # HEADLINES
-                        if is_boosted:
-                             st.markdown(f"""<div class="result-box boosted">🚨 VIP ESCORT DETECTED: {identity} 🚨</div>""", unsafe_allow_html=True)
+                        # --- HEADER DISPLAY ---
+                        if status == "BOOSTED":
+                             st.markdown(f"""<div class="result-box boosted">🚨 YOU ARE BEING CARRIED 🚨<br><span style='font-size:16px'>by {identity}</span></div>""", unsafe_allow_html=True)
                              if "http" in CLOWN_IMAGE_URL:
                                 st.image(CLOWN_IMAGE_URL, caption="Tactical overview", width=500)
-                        elif is_booster:
-                             st.markdown(f"""<div class="result-box booster">👑 YOU ARE THE MERCENARY 👑<br>You are carrying {identity}</div>""", unsafe_allow_html=True)
+                             
+                             col1_title = "YOU (THE PASSENGER)"
+                             col1_color = "white"
+                             col2_title = "THEM (THE DRIVER)"
+                             col2_color = "red"
+
+                        elif status == "BOOSTER":
+                             st.markdown(f"""<div class="result-box booster">👑 YOU ARE CARRYING THEM 👑<br><span style='font-size:16px'>Poor {identity} is heavy...</span></div>""", unsafe_allow_html=True)
+                             
+                             col1_title = "YOU (THE DRIVER)"
+                             col1_color = "#FFD700"
+                             col2_title = "THEM (THE BACKPACK)"
+                             col2_color = "white"
+                        
                         else:
-                             st.markdown(f"""<div class="result-box clean">🤝 SOLID SQUAD DETECTED: {identity} 🤝</div>""", unsafe_allow_html=True)
+                             st.markdown(f"""<div class="result-box clean">🤝 EQUAL SKILL DETECTED 🤝</div>""", unsafe_allow_html=True)
+                             col1_title = "YOU"
+                             col1_color = "white"
+                             col2_title = "THEM"
+                             col2_color = "white"
 
                         st.markdown(f"<p style='text-align:center; font-size:18px;'>Seen <b>{games} times</b> (Winrate: {winrate}%).</p>", unsafe_allow_html=True)
                         st.markdown("<br>", unsafe_allow_html=True)
 
-                        # COLUMNS
+                        # --- STATS COLUMNS ---
                         c1, c2 = st.columns(2)
                         
-                        # COLUMN 1: YOU
+                        # COLUMN 1 (YOU)
                         with c1:
-                            st.markdown(f"<h3 style='text-align:center; color:white;'>YOU</h3>", unsafe_allow_html=True)
-                            st.markdown(f"<div style='text-align:center; color:#888; margin-bottom:10px;'>Main Agents: {', '.join(my_top_champs)}</div>", unsafe_allow_html=True)
+                            st.markdown(f"<h3 style='text-align:center; color:{col1_color};'>{col1_title}</h3>", unsafe_allow_html=True)
+                            st.markdown(f"<div style='text-align:center; color:#888; margin-bottom:10px;'>Played: {', '.join(my_top_champs)}</div>", unsafe_allow_html=True)
                             
                             st.metric("KDA", my_kda)
                             st.metric("Damage/Game", my_avg_dmg)
-                            st.metric("Towers Destroyed/Game", my_avg_towers)
+                            st.metric("Towers/Game", my_avg_towers)
                             st.metric("Obj. Damage/Game", my_avg_obj)
 
-                        # COLUMN 2: THE DUO
+                        # COLUMN 2 (THEM)
                         with c2:
-                            color = "red" if is_boosted else ("gold" if is_booster else "white")
-                            role = "THE BODYGUARD" if is_boosted else ("THE TOURIST" if is_booster else "THE PARTNER")
-                            
-                            st.markdown(f"<h3 style='text-align:center; color:{color};'>{role}<br><span style='font-size:18px'>{identity.split('#')[0]}</span></h3>", unsafe_allow_html=True)
-                            st.markdown(f"<div style='text-align:center; color:#888; margin-bottom:10px;'>Main Agents: {', '.join(duo_top_champs)}</div>", unsafe_allow_html=True)
+                            st.markdown(f"<h3 style='text-align:center; color:{col2_color};'>{col2_title}</h3>", unsafe_allow_html=True)
+                            st.markdown(f"<div style='text-align:center; color:#888; margin-bottom:10px;'>Played: {', '.join(duo_top_champs)}</div>", unsafe_allow_html=True)
                             
                             st.metric("KDA", duo_kda, delta=round(duo_kda - my_kda, 2))
                             st.metric("Damage/Game", duo_avg_dmg, delta=duo_avg_dmg - my_avg_dmg)
-                            st.metric("Towers Destroyed/Game", duo_avg_towers, delta=round(duo_avg_towers - my_avg_towers, 1))
+                            st.metric("Towers/Game", duo_avg_towers, delta=round(duo_avg_towers - my_avg_towers, 1))
                             st.metric("Obj. Damage/Game", duo_avg_obj, delta=duo_avg_obj - my_avg_obj)
 
-                        # FINAL TEXT VERDICT
+                        # FINAL CLEAR SENTENCE
                         st.markdown("<br>", unsafe_allow_html=True)
-                        if is_boosted:
-                            st.error(f"VERDICT: CLOSE PROTECTION. They carry, you spectate. ({duo_avg_towers} towers vs {my_avg_towers})")
-                        elif is_booster:
-                            st.warning(f"VERDICT: CHARITY WORK. Your back must hurt from carrying them. You do more objective damage ({my_avg_obj} vs {duo_avg_obj}).")
+                        if status == "BOOSTED":
+                            st.error(f"VERDICT: They have better stats in every game. They are carrying you.")
+                        elif status == "BOOSTER":
+                            st.warning(f"VERDICT: You have much better stats. You are boosting them.")
                         else:
-                            st.success("VERDICT: BALANCED UNIT. Equal contribution to the mission.")
+                            st.success("VERDICT: Perfect synergy. You contribute equally.")
                             
                     else:
-                        st.markdown("""<div class="result-box clean">LONE WOLF OPERATOR</div>""", unsafe_allow_html=True)
-                        st.markdown("<p style='text-align:center;'>No tactical backup detected. You fight alone.</p>", unsafe_allow_html=True)
+                        st.markdown("""<div class="result-box clean">SOLO PLAYER</div>""", unsafe_allow_html=True)
+                        st.markdown("<p style='text-align:center;'>No recurring duo detected.</p>", unsafe_allow_html=True)
