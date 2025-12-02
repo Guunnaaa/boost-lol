@@ -9,7 +9,7 @@ import concurrent.futures
 import threading
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V64", layout="wide")
 
 # --- API KEY ---
 try:
@@ -34,64 +34,10 @@ ROLE_ICONS = {
     "BOTTOM": "🏹 ADC", "UTILITY": "🩹 SUPP", "UNKNOWN": "❓ FILL"
 }
 
-# --- TRADUCTIONS (COMPLÈTES) ---
-TRANSLATIONS = {
-    "FR": {
-        "app_title": "LoL Duo Analyst",
-        "btn_scan": "LANCER L'ANALYSE",
-        "placeholder": "Exemple: Kameto#EUW",
-        "lbl_id": "RIOT ID",
-        "lbl_region": "RÉGION",
-        "lbl_mode": "MODE DE JEU",
-        "dpm_btn": "🔗 Voir sur dpm.lol",
-        
-        "v_hyper": "MVP TOTAL", "s_hyper": "{target} porte {duo} sur ses épaules (1v9)",
-        "v_tactician": "MASTERMIND", "s_tactician": "{target} gagne la game pour {duo} grâce à la macro",
-        "v_fighter": "GLADIATEUR", "s_fighter": "{target} fait les dégâts, {duo} prend les objectifs",
-        "v_solid": "DUO FUSIONNEL", "s_solid": "Synergie parfaite entre {target} et {duo}",
-        "v_passive": "EN RETRAIT", "s_passive": "{target} joue safe et laisse {duo} mener le jeu",
-        "v_struggle": "EN DIFFICULTÉ", "s_struggle": "{target} peine à suivre le rythme imposé par {duo}",
-
-        "solo": "LOUP SOLITAIRE", "solo_sub": "Aucun duo récurrent détecté sur 20 parties.",
-        "loading": "Analyse tactique en cours...",
-        
-        "role_hyper": "CARRY", "role_lead": "MENEUR", "role_equal": "PARTENAIRE", "role_supp": "SOUTIEN", "role_gap": "ROOKIE",
-        "q_surv": "Injouable (KDA)", "q_dmg": "Gros Dégâts", "q_obj": "Destructeur", "q_vis": "Contrôle Map", "q_bal": "Polyvalent", "q_supp": "Excellent Support",
-        "f_feed": "Meurt trop souvent", "f_afk": "Dégâts faibles", "f_no_obj": "Ignore objectifs", "f_blind": "Vision faible", "f_farm": "Farm faible", "f_ok": "Solide",
-        
-        "stats": "STATS", "combat": "COMBAT", "eco": "ÉCONOMIE", "vision": "VISION & MAP",
-        "error_no_games": "Aucune partie trouvée.", "error_hint": "Vérifie la région ou le mode de jeu."
-    },
-    "EN": {
-        "app_title": "LoL Duo Analyst",
-        "btn_scan": "START ANALYSIS",
-        "placeholder": "Example: Faker#KR1",
-        "lbl_id": "RIOT ID",
-        "lbl_region": "REGION",
-        "lbl_mode": "GAME MODE",
-        "dpm_btn": "🔗 Check dpm.lol",
-        
-        "v_hyper": "TOTAL MVP", "s_hyper": "{target} is hard carrying {duo}",
-        "v_tactician": "MASTERMIND", "s_tactician": "{target} wins for {duo} via macro",
-        "v_fighter": "GLADIATOR", "s_fighter": "{target} deals dmg, {duo} takes objs",
-        "v_solid": "PERFECT DUO", "s_solid": "Perfect synergy between {target} and {duo}",
-        "v_passive": "PASSIVE", "s_passive": "{target} plays safe, {duo} leads",
-        "v_struggle": "STRUGGLING", "s_struggle": "{target} can't keep up with {duo}",
-        "solo": "SOLO PLAYER", "solo_sub": "No recurring partner found.",
-        "loading": "Analyzing...", "role_hyper": "CARRY", "role_lead": "LEADER", "role_equal": "PARTNER", "role_supp": "SUPPORT", "role_gap": "ROOKIE",
-        "q_surv": "Unkillable", "q_dmg": "Heavy Hitter", "q_obj": "Destroyer", "q_vis": "Map Control", "q_bal": "Balanced", "q_supp": "Great Support",
-        "f_feed": "Too fragile", "f_afk": "Low Dmg", "f_no_obj": "No Objs", "f_blind": "Blind", "f_farm": "Low Farm", "f_ok": "Solid",
-        "stats": "STATS", "combat": "COMBAT", "eco": "ECONOMY", "vision": "VISION",
-        "error_no_games": "No games found.", "error_hint": "Check Region."
-    },
-    "ES": {"app_title":"Analista Duo LoL", "btn_scan":"ANALIZAR", "lbl_id":"RIOT ID", "lbl_region":"REGIÓN", "lbl_mode":"MODO", "placeholder":"Ejemplo: Ibai#EUW", "dpm_btn":"Ver dpm.lol", "v_hyper":"MVP TOTAL", "s_hyper":"Domina a {duo}", "v_tactician":"ESTRATEGA", "s_tactician":"Macro para {duo}", "v_fighter":"GLADIADOR", "s_fighter":"Daño", "v_solid":"DUO SOLIDO", "s_solid":"Sinergia con {duo}", "v_passive":"PASIVO", "s_passive":"Seguro", "v_struggle":"DIFICULTAD", "s_struggle":"Sufre vs {duo}", "solo":"SOLO", "solo_sub":"Sin duo", "loading":"Cargando...", "role_hyper":"CARRY", "role_lead":"LIDER", "role_equal":"SOCIO", "role_supp":"APOYO", "role_gap":"NOVATO", "q_surv":"Inmortal", "q_dmg":"Daño", "q_obj":"Torres", "q_vis":"Vision", "q_bal":"Balance", "q_supp":"Support", "f_feed":"Muere", "f_afk":"Poco daño", "f_no_obj":"Sin obj", "f_blind":"Ciego", "f_farm":"Farm", "f_ok":"Bien", "stats":"STATS", "combat":"COMBATE", "eco":"ECONOMIA", "vision":"VISION", "error_no_games":"Error", "error_hint":"Region?"},
-    "KR": {"app_title":"LoL 듀오 분석기", "btn_scan":"분석 시작", "lbl_id":"소환사명", "lbl_region":"지역", "lbl_mode":"게임 모드", "placeholder":"예: Hide on bush#KR1", "dpm_btn":"dpm.lol 확인", "v_hyper":"하드 캐리", "s_hyper":"{target} > {duo}", "v_tactician":"전략가", "s_tactician":"운영", "v_fighter":"전투광", "s_fighter":"딜", "v_solid":"완벽 듀오", "s_solid":"{target} & {duo}", "v_passive":"버스", "s_passive":"안전", "v_struggle":"고전", "s_struggle":"역부족", "solo":"솔로", "solo_sub":"듀오 없음", "loading":"분석 중...", "role_hyper":"캐리", "role_lead":"리더", "role_equal":"파트너", "role_supp":"서포터", "role_gap":"신입", "q_surv":"생존", "q_dmg":"딜량", "q_obj":"철거", "q_vis":"시야", "q_bal":"밸런스", "q_supp":"서폿", "f_feed":"데스", "f_afk":"딜부족", "f_no_obj":"운영부족", "f_blind":"시야부족", "f_farm":"CS", "f_ok":"굿", "stats":"통계", "combat":"전투", "eco":"경제", "vision":"시야", "error_no_games":"없음", "error_hint":"지역?"}
-}
-
 # --- MAP DRAPEAUX ---
 LANG_MAP = {"🇫🇷 FR": "FR", "🇺🇸 EN": "EN", "🇪🇸 ES": "ES", "🇰🇷 KR": "KR"}
 
-# --- CSS MODERNE (HEXTECH UI V2) ---
+# --- CSS MODERNE (HEXTECH DARK V4 - FRAMED) ---
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap');
@@ -102,19 +48,23 @@ st.markdown(f"""
         background-size: 150px; background-repeat: repeat; background-attachment: fixed;
     }}
     
-    /* RECENTRAGE ET MARGES */
+    /* RECENTRAGE ET CADRE (FIXE LE HAUT COUPÉ) */
     .block-container {{
         max-width: 1400px !important; 
+        margin-top: 60px !important;    /* Espace en haut */
+        margin-bottom: 60px !important; /* Espace en bas */
         padding-top: 3rem !important;
         padding-bottom: 3rem !important;
-        background: rgba(12, 12, 12, 0.95); backdrop-filter: blur(15px);
-        border-radius: 15px; border: 1px solid #333; box-shadow: 0 20px 50px rgba(0,0,0,0.9);
-        margin-top: 20px !important;
+        background: rgba(12, 12, 12, 0.96); 
+        backdrop-filter: blur(15px);
+        border-radius: 20px; 
+        border: 1px solid #333; 
+        box-shadow: 0 25px 80px rgba(0,0,0,0.95);
     }}
 
     /* TITRE */
     .main-title {{
-        font-size: 55px; font-weight: 900; text-align: center; margin-bottom: 30px; margin-top: 10px;
+        font-size: 55px; font-weight: 900; text-align: center; margin-bottom: 30px; margin-top: 0px;
         background: linear-gradient(90deg, #00c6ff, #0072ff);
         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         filter: drop-shadow(0 0 10px rgba(0, 114, 255, 0.5)); text-transform: uppercase;
@@ -122,13 +72,14 @@ st.markdown(f"""
     
     /* CARTE JOUEUR */
     .player-card {{
-        background: rgba(255, 255, 255, 0.03); border-radius: 16px; padding: 20px;
-        border: 1px solid rgba(255,255,255,0.05); text-align: center; height: 100%;
+        background: rgba(30, 30, 30, 0.5); border-radius: 16px; padding: 25px;
+        border: 1px solid rgba(255,255,255,0.08); text-align: center; height: 100%;
+        box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
     }}
     .player-name {{ font-size: 28px; font-weight: 800; color: white; margin-bottom: 5px; }}
     .player-sub {{ font-size: 14px; color: #aaa; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }}
 
-    /* BADGES DE STYLE */
+    /* BADGES */
     .badge {{
         display: inline-block; padding: 4px 8px; border-radius: 4px; 
         font-size: 11px; font-weight: 700; margin: 2px; text-transform: uppercase;
@@ -138,23 +89,23 @@ st.markdown(f"""
     .b-blue {{ background: rgba(0, 191, 255, 0.15); color: #00BFFF; border: 1px solid #00BFFF; }}
     .b-gold {{ background: rgba(255, 215, 0, 0.15); color: #FFD700; border: 1px solid #FFD700; }}
 
-    /* STATS GRID AVEC DIFF */
-    .stat-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; margin-bottom: 20px; }}
-    .stat-item {{ background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; text-align: left; }}
+    /* STATS GRID */
+    .stat-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; margin-bottom: 0px; }}
+    .stat-item {{ background: rgba(0,0,0,0.3); padding: 12px; border-radius: 10px; text-align: left; border: 1px solid rgba(255,255,255,0.05); }}
     .stat-val-container {{ display: flex; align-items: center; gap: 8px; }}
-    .stat-val {{ font-size: 18px; font-weight: 700; color: white; }}
-    .stat-lbl {{ font-size: 11px; color: #888; text-transform: uppercase; margin-top: 4px; }}
+    .stat-val {{ font-size: 20px; font-weight: 700; color: white; }}
+    .stat-lbl {{ font-size: 11px; color: #999; text-transform: uppercase; margin-top: 4px; font-weight: 600; letter-spacing: 0.5px; }}
     
-    /* DIFFERENCES VERT/ROUGE */
-    .stat-diff {{ font-size: 12px; font-weight: 700; padding: 2px 4px; border-radius: 4px; }}
+    /* DIFFS */
+    .stat-diff {{ font-size: 12px; font-weight: 700; padding: 2px 5px; border-radius: 4px; }}
     .pos {{ color: #00ff99; background: rgba(0,255,153,0.15); }} 
     .neg {{ color: #ff4444; background: rgba(255,68,68,0.15); }}
-    .neutral {{ color: #666; }}
+    .neutral {{ color: #888; }}
 
-    /* VERDICT BANNER */
+    /* VERDICT */
     .verdict-box {{
         text-align: center; padding: 30px; border-radius: 16px; margin: 20px 0 40px 0;
-        background: rgba(0,0,0,0.4); border: 2px solid #333;
+        background: rgba(20, 20, 20, 0.8); border: 2px solid #333;
     }}
     
     /* DPM BUTTON */
@@ -163,34 +114,25 @@ st.markdown(f"""
         border-radius: 6px; text-decoration: none; font-size: 12px; border: 1px solid #2563eb;
     }}
 
-    /* BUTTON SCAN */
+    /* SCAN BUTTON */
     .stButton > button {{
         width: 100%; height: 55px; background: linear-gradient(135deg, #ff0055, #cc0044);
         color: white; font-size: 20px; font-weight: 800; border: none; border-radius: 10px;
-        text-transform: uppercase; transition: 0.3s;
+        text-transform: uppercase; transition: 0.3s; box-shadow: 0 0 15px rgba(255, 0, 85, 0.3);
     }}
-    .stButton > button:hover {{ transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,0,60,0.4); }}
+    .stButton > button:hover {{ transform: translateY(-2px); box-shadow: 0 5px 25px rgba(255,0,60,0.5); }}
     
-    /* HIDE INPUT LABEL & PRESS ENTER */
     .stTextInput > label {{ display: none; }}
-    .stForm > div[data-testid="stFormEnterToSubmit"] {{ display: none; }}
 </style>
 """, unsafe_allow_html=True)
 
 # --- HEADER & LANGUAGE ---
 c_title, c_lang = st.columns([5, 1])
 with c_lang:
-    # Use format_func to display flags and keep state
-    sel = st.selectbox(
-        "Lang", 
-        options=list(LANG_MAP.keys()), 
-        label_visibility="collapsed"
-    )
-    lang_code = LANG_MAP[sel]
+    selected_label = st.selectbox("Lang", list(LANG_MAP.keys()), label_visibility="collapsed")
+    lang_code = LANG_MAP[selected_label]
 
-T = TRANSLATIONS.get(lang_code, TRANSLATIONS["EN"])
-
-st.markdown(f'<div class="main-title">{T["app_title"]}</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">LoL Duo Analyst</div>', unsafe_allow_html=True)
 
 # --- FORMULAIRE ---
 with st.form("search_form"):
@@ -198,19 +140,19 @@ with st.form("search_form"):
     with c1:
         st.markdown(f"""
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-            <span style="font-size:14px; font-weight:700; color:#ddd;">{T['lbl_id']}</span>
-            <a href="https://dpm.lol" target="_blank" class="dpm-btn">{T['dpm_btn']}</a>
+            <span style="font-size:14px; font-weight:700; color:#ddd;">RIOT ID</span>
+            <a href="https://dpm.lol" target="_blank" class="dpm-btn">🔗 Check dpm.lol</a>
         </div>""", unsafe_allow_html=True)
-        riot_id_input = st.text_input("HiddenLabel", placeholder=T["placeholder"], label_visibility="collapsed")
+        riot_id_input = st.text_input("HiddenLabel", placeholder="Ex: Kameto#EUW", label_visibility="collapsed")
     with c2:
-        st.markdown(f"<span style='font-size:14px; font-weight:700; color:#ddd;'>{T['lbl_region']}</span>", unsafe_allow_html=True)
+        st.markdown("<span style='font-size:14px; font-weight:700; color:#ddd;'>RÉGION</span>", unsafe_allow_html=True)
         region_select = st.selectbox("RegionLabel", ["EUW1", "NA1", "KR", "EUN1", "TR1"], label_visibility="collapsed")
     with c3:
-        st.markdown(f"<span style='font-size:14px; font-weight:700; color:#ddd;'>{T['lbl_mode']}</span>", unsafe_allow_html=True)
+        st.markdown("<span style='font-size:14px; font-weight:700; color:#ddd;'>MODE</span>", unsafe_allow_html=True)
         queue_label = st.selectbox("ModeLabel", list(QUEUE_MAP.keys()), label_visibility="collapsed")
     
     st.markdown("<br>", unsafe_allow_html=True)
-    submitted = st.form_submit_button(T["btn_scan"])
+    submitted = st.form_submit_button("LANCER L'ANALYSE COMPLÈTE")
 
 # --- HELPERS ---
 @st.cache_data(ttl=3600)
@@ -231,53 +173,40 @@ def safe_format(text, target, duo):
     except: return text
 
 # --- LOGIQUE SCORE & STYLE ---
-def determine_playstyle(stats, role, lang_dict):
-    """Détermine des badges basés sur les stats par minute"""
+def determine_playstyle(stats, role):
     badges = []
-    # Badges positifs
-    if stats['kda'] >= 4.0: badges.append((lang_dict.get("q_surv", "KDA Player"), "b-gold"))
-    if stats['vis_min'] >= 2.0 or (role == "UTILITY" and stats['vis_min'] >= 2.5): badges.append((lang_dict.get("q_vis", "Oracle"), "b-blue")) 
-    
-    # Badges agressifs / Carry
-    if stats['dmg_min'] >= 800: badges.append((lang_dict.get("q_dmg", "Heavy Hitter"), "b-red"))
-    if stats['obj'] >= 5000: badges.append((lang_dict.get("q_obj", "Breacher"), "b-gold"))
-    
-    # Badges négatifs
-    if stats['kda'] < 1.5: badges.append((lang_dict.get("f_feed", "Grey Screen"), "b-red"))
-    if stats['dmg_min'] < 300 and role not in ["UTILITY", "JUNGLE"]: badges.append((lang_dict.get("f_afk", "AFK Farm"), "b-blue"))
-
-    if not badges: badges.append((lang_dict.get("q_bal", "Standard"), "b-blue"))
+    if stats['kda'] >= 4.0: badges.append(("🛡️ KDA Player", "b-gold"))
+    if stats['vis_min'] >= 2.0 or (role == "UTILITY" and stats['vis_min'] >= 2.5): badges.append(("👁️ Oracle", "b-blue")) 
+    if stats['kp'] >= 0.65: badges.append(("🤝 Teamplayer", "b-green"))
+    if stats['dmg_min'] >= 800: badges.append(("⚔️ 1v9 Machine", "b-red"))
+    if stats['solokills'] >= 2.5: badges.append(("🩸 Duelist", "b-red"))
+    if stats['obj'] >= 5000: badges.append(("🏰 Breacher", "b-gold"))
+    if stats['kda'] < 1.5: badges.append(("👻 Grey Screen", "b-red"))
+    if stats['vis_min'] < 0.4 and role != "ADC": badges.append(("🕶️ Blind", "b-red"))
+    if stats['dmg_min'] < 300 and role not in ["UTILITY", "JUNGLE"]: badges.append(("💤 AFK Farm", "b-blue"))
+    if not badges: badges.append(("⚖️ Standard", "b-blue"))
     return badges[:3] 
 
 # --- FONCTION GRAPHIQUE ---
 def create_radar(data_list, names, colors, title=None, height=400, show_legend=True):
-    categories = ['Combat', 'Gold', 'Vision', 'Obj', 'KDA']
+    categories = ['Combat', 'Gold', 'Vision', 'Objectifs', 'Survie']
     fig = go.Figure()
-
     for i, data in enumerate(data_list):
         fig.add_trace(go.Scatterpolar(
-            r=data,
-            theta=categories,
-            fill='toself',
-            name=names[i],
-            line_color=colors[i],
-            opacity=0.7,
-            marker=dict(size=5)
+            r=data, theta=categories, fill='toself', name=names[i],
+            line_color=colors[i], opacity=0.6, marker=dict(size=5)
         ))
-
     fig.update_layout(
         polar=dict(
             bgcolor='rgba(0,0,0,0)',
-            radialaxis=dict(visible=True, range=[0, 100], showticklabels=False, linecolor='#555', gridcolor='#444', gridwidth=1),
-            angularaxis=dict(linecolor='#555', gridcolor='#444', gridwidth=1, tickfont=dict(color='white', size=12, weight='bold'))
+            radialaxis=dict(visible=True, range=[0, 100], showticklabels=False, linecolor='#444', gridcolor='#333', gridwidth=1),
+            angularaxis=dict(linecolor='#444', gridcolor='#333', gridwidth=1, tickfont=dict(color='#eee', size=12, weight='bold'))
         ),
         showlegend=show_legend,
-        legend=dict(font=dict(color='white', size=12), orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5, bgcolor='rgba(0,0,0,0)'),
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(l=60, r=60, t=40 if title else 20, b=60),
-        height=height,
-        title=dict(text=title, x=0.5, y=0.95, font=dict(color='white', size=16)) if title else None
+        legend=dict(font=dict(color='white', size=12), orientation="h", y=-0.15, x=0.5, xanchor="center", bgcolor='rgba(0,0,0,0)'),
+        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+        margin=dict(l=50, r=50, t=20, b=50),
+        height=height
     )
     return fig
 
@@ -309,34 +238,28 @@ if submitted:
         region = get_regions(region_select)
         q_id = QUEUE_MAP[queue_label]
         
-        with st.spinner(T["loading"]):
+        with st.spinner("Analyse tactique des données Riot..."):
             try:
-                # 1. PUUID
                 r_acc = get_puuid(quote(name_raw), tag, region, API_KEY)
                 if r_acc.status_code != 200:
-                    st.error(T["error_no_games"]) # Fallback error msg
+                    st.error("Joueur introuvable.")
                     st.stop()
                 puuid = r_acc.json().get("puuid")
-                
-                # 2. MATCHS
                 r_match = get_matches(puuid, region, API_KEY, q_id)
                 match_ids = r_match.json()
                 if not match_ids:
-                    st.warning(T["error_no_games"])
-                    st.info(T["error_hint"])
+                    st.warning(f"Aucune partie trouvée en {queue_label}.")
                     st.stop()
             except Exception as e:
                 st.error(f"Erreur API: {e}")
                 st.stop()
 
-            # 3. PROCESSING PARALLÈLE
             duo_data = {}
             target_name = riot_id_input
             data_lock = threading.Lock()
             
             with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
                 future_to_match = {executor.submit(fetch_match, m, region, API_KEY): m for m in match_ids}
-                
                 for future in concurrent.futures.as_completed(future_to_match):
                     try:
                         data = future.result()
@@ -344,7 +267,6 @@ if submitted:
                         info = data['info']
                         duration_min = info['gameDuration'] / 60
                         if duration_min < 5: continue 
-                        
                         participants = info['participants']
                         me = next((p for p in participants if p['puuid'] == puuid), None)
                         if not me: continue
@@ -354,38 +276,25 @@ if submitted:
                             return {
                                 'kills': p['kills'], 'deaths': p['deaths'], 'assists': p['assists'],
                                 'dmg': p['totalDamageDealtToChampions'],
-                                'gold': p['goldEarned'],
-                                'vis': p['visionScore'],
-                                'obj': p.get('damageDealtToObjectives', 0),
-                                'towers': p.get('turretTakedowns', 0),
+                                'gold': p['goldEarned'], 'vis': p['visionScore'],
+                                'obj': p.get('damageDealtToObjectives', 0), 'towers': p.get('turretTakedowns', 0),
                                 'kp': p.get('challenges', {}).get('killParticipation', 0),
                                 'solokills': p.get('challenges', {}).get('soloKills', 0),
-                                'champ': p['championName'],
-                                'role': p.get('teamPosition', 'UNKNOWN'),
-                                'win': p['win']
+                                'champ': p['championName'], 'role': p.get('teamPosition', 'UNKNOWN'), 'win': p['win']
                             }
-                        
                         my_s = extract_stats(me)
                         
                         with data_lock:
                             for p in info['participants']:
                                 if p['teamId'] == me['teamId'] and p['puuid'] != puuid:
                                     full_id = f"{p.get('riotIdGameName')}#{p.get('riotIdTagLine')}"
-                                    
                                     if full_id not in duo_data:
-                                        duo_data[full_id] = {
-                                            'name': p.get('riotIdGameName'),
-                                            'games': 0, 'wins': 0,
-                                            'champs': [], 'roles': [],
-                                            'stats_duo': [], 'stats_me': []
-                                        }
+                                        duo_data[full_id] = {'name': p.get('riotIdGameName'), 'games': 0, 'wins': 0, 'champs': [], 'roles': [], 'stats_duo': [], 'stats_me': []}
                                     d = duo_data[full_id]
                                     d['games'] += 1
                                     if p['win']: d['wins'] += 1
                                     d['champs'].append(p['championName'])
                                     d['roles'].append(p.get('teamPosition', 'UNKNOWN'))
-                                    
-                                    # Normalisation minute
                                     duo_s = extract_stats(p)
                                     for s, norm in [(duo_s, d['stats_duo']), (my_s, d['stats_me'])]:
                                         n = s.copy()
@@ -393,10 +302,8 @@ if submitted:
                                         n['gold_min'] = s['gold'] / duration_min
                                         n['vis_min'] = s['vis'] / duration_min
                                         norm.append(n)
-
                     except Exception: pass
 
-            # 4. ANALYSE DU MEILLEUR DUO
             st.markdown("<div id='result'></div>", unsafe_allow_html=True)
             best_duo = None
             max_g = 0
@@ -405,22 +312,17 @@ if submitted:
                     max_g = v['games']
                     best_duo = v
             
-            # --- AFFICHAGE ---
             if best_duo and max_g >= 2:
                 g = best_duo['games']
                 duo_name = best_duo['name']
                 winrate = int((best_duo['wins']/g)*100)
-                
-                # Rôle Principal
                 try: role_duo = Counter(best_duo['roles']).most_common(1)[0][0]
                 except: role_duo = "UNKNOWN"
                 try: role_me = Counter([x['role'] for x in best_duo['stats_me']]).most_common(1)[0][0]
                 except: role_me = "UNKNOWN"
-                
                 top_champs_duo = [c[0] for c in Counter(best_duo['champs']).most_common(3)]
                 top_champs_me = [c[0] for c in Counter([x['champ'] for x in best_duo['stats_me']]).most_common(3)]
                 
-                # CALCUL MOYENNES
                 def avg_stats(stat_list):
                     res = {}
                     keys = stat_list[0].keys()
@@ -428,7 +330,6 @@ if submitted:
                         if isinstance(stat_list[0][k], (int, float)):
                             res[k] = sum(d[k] for d in stat_list) / len(stat_list)
                     return res
-
                 avg_duo = avg_stats(best_duo['stats_duo'])
                 avg_me = avg_stats(best_duo['stats_me'])
                 
@@ -436,7 +337,6 @@ if submitted:
                 avg_duo['kda'] = calc_kda(avg_duo)
                 avg_me['kda'] = calc_kda(avg_me)
 
-                # --- SCORE D'IMPACT V60 ---
                 def get_impact_score(s, role):
                     score = 0
                     score += min(5, s['kda']) 
@@ -444,31 +344,22 @@ if submitted:
                     vis_target = 2.0 if role == "UTILITY" else 1.0
                     score += min(3, (s['vis_min'] / vis_target) * 2)
                     if role != "UTILITY": score += min(4, s['dmg_min'] / 700)
-                    # Objectifs
-                    if role == "JUNGLE": score += min(3, s['obj'] / 6000)
-                    else: score += min(2, s['towers'])
+                    obj_score = (s['obj'] / 5000) + (s['towers'] * 0.5)
+                    score += min(4, obj_score)
                     return score
 
                 score_me = get_impact_score(avg_me, role_me)
                 score_duo = get_impact_score(avg_duo, role_duo)
                 ratio = score_me / max(0.1, score_duo)
                 
-                # --- VERDICT ---
-                if ratio > 1.35: 
-                    title, color, sub = T["v_hyper"], "#FFD700", safe_format(T["s_hyper"], target_name, duo_name)
-                elif ratio > 1.15: 
-                    title, color, sub = T["v_lead"], "#00BFFF", safe_format(T["s_lead"], target_name, duo_name)
-                elif ratio < 0.75: 
-                    title, color, sub = T["v_gap"], "#ff4444", safe_format(T["s_gap"], target_name, duo_name)
-                elif ratio < 0.9: 
-                    title, color, sub = T["v_supp"], "#FFA500", safe_format(T["s_supp"], target_name, duo_name)
-                else: 
-                    title, color, sub = T["v_solid"], "#00ff99", T["s_solid"]
+                if ratio > 1.35: title, color, sub = "MVP TOTAL", "#FFD700", f"{target_name} est le carry indiscutable."
+                elif ratio > 1.15: title, color, sub = "LEADER", "#00BFFF", f"{target_name} mène le jeu techniquement."
+                elif ratio < 0.75: title, color, sub = "EN DIFFICULTÉ", "#ff4444", f"{target_name} se fait carry par {duo_name}."
+                elif ratio < 0.9: title, color, sub = "SOUTIEN ACTIF", "#FFA500", f"{target_name} aide {duo_name} à gagner."
+                else: title, color, sub = "DUO FUSIONNEL", "#00ff99", "Synergie parfaite et impact équivalent."
 
-                # AUTO SCROLL
                 components.html(f"<script>window.parent.document.querySelector('.verdict-box').scrollIntoView({{behavior:'smooth'}});</script>", height=0)
 
-                # UI VERDICT
                 st.markdown(f"""
                 <div class="verdict-box" style="border-color:{color}">
                     <div style="font-size:45px; font-weight:900; color:{color}; margin-bottom:10px;">{title}</div>
@@ -477,36 +368,28 @@ if submitted:
                 </div>
                 """, unsafe_allow_html=True)
 
-                # PREPARATION DONNEES GRAPHIQUES
                 def norm(val, max_v): return min(100, (val / max_v) * 100)
                 data_me_norm = [norm(avg_me['dmg_min'], 1000), norm(avg_me['gold_min'], 600), norm(avg_me['vis_min'], 2.5), norm(avg_me['obj'], 8000), norm(avg_me['kda'], 5)]
                 data_duo_norm = [norm(avg_duo['dmg_min'], 1000), norm(avg_duo['gold_min'], 600), norm(avg_duo['vis_min'], 2.5), norm(avg_duo['obj'], 8000), norm(avg_duo['kda'], 5)]
-
-                # GRAPHIQUE CENTRAL
-                fig_comp = create_radar([data_me_norm, data_duo_norm], [target_name, duo_name], ['#00c6ff', '#ff0055'], height=350)
-                st.plotly_chart(fig_comp, use_container_width=True, config={'displayModeBar': False})
                 
-                # COLONNES JOUEURS
+                # Theme=None FIXE LE "UNDEFINED"
+                st.plotly_chart(create_radar([data_me_norm, data_duo_norm], [target_name, duo_name], ['#00c6ff', '#ff0055']), use_container_width=True, config={'displayModeBar': False}, theme=None)
+                
                 col1, col2 = st.columns(2, gap="large")
-                badges_me = determine_playstyle(avg_me, role_me, T)
-                badges_duo = determine_playstyle(avg_duo, role_duo, T)
+                badges_me = determine_playstyle(avg_me, role_me)
+                badges_duo = determine_playstyle(avg_duo, role_duo)
                 
-                def display_player_card(name, champs, stats, badges, role_icon, diff_stats, color_theme, chart_data):
+                def display_player_card(name, champs, stats, badges, role_icon, diff_stats, color_theme):
                     badges_html = "".join([f"<span class='badge {b[1]}'>{b[0]}</span>" for b in badges])
                     champs_html = "".join([f"<img src='{get_champ_url(c)}' style='width:50px; border-radius:50%; border:2px solid #333; margin:2px;'>" for c in champs])
                     
                     def stat_line(label, value, diff_val, is_percent=False, is_kda=False):
                         val_str = f"{int(value*100)}%" if is_percent else (f"{value:.2f}" if is_kda else (f"{int(value/1000)}k" if value > 1000 else f"{int(value)}"))
-                        
                         diff_html = ""
                         if diff_val > 0: diff_html = f"<span class='stat-diff pos'>+{diff_val:.1f}</span>"
                         elif diff_val < 0: diff_html = f"<span class='stat-diff neg'>{diff_val:.1f}</span>"
                         else: diff_html = f"<span class='stat-diff neutral'>=</span>"
-
-                        return f"""<div class="stat-item">
-                            <div class="stat-val-container"><div class="stat-val">{val_str}</div>{diff_html}</div>
-                            <div class="stat-lbl">{label}</div>
-                        </div>"""
+                        return f"""<div class="stat-item"><div class="stat-val-container"><div class="stat-val">{val_str}</div>{diff_html}</div><div class="stat-lbl">{label}</div></div>"""
 
                     stat_grid_html = f"""<div class="stat-grid">
                         {stat_line("KDA", stats['kda'], diff_stats['kda'], is_kda=True)}
@@ -518,32 +401,19 @@ if submitted:
                     </div>"""
 
                     st.markdown(f"""
-                    <div class="player-card" style="border-top: 3px solid {color_theme};">
+                    <div class="player-card" style="border-top: 4px solid {color_theme};">
                         <div class="player-name">{name}</div>
                         <div class="player-sub">{role_icon}</div>
                         <div style="margin:10px 0;">{badges_html}</div>
                         <div style="margin-bottom:15px;">{champs_html}</div>
                         {stat_grid_html}
-                    </div>
-                    """, unsafe_allow_html=True)
-                    # Petit graph individuel
-                    fig_indiv = create_radar([chart_data], [name], [color_theme], height=200, show_legend=False)
-                    st.plotly_chart(fig_indiv, use_container_width=True, config={'displayModeBar': False})
+                    </div>""", unsafe_allow_html=True)
 
-
-                # Calcul des différences
                 diff_me = {k: avg_me[k] - avg_duo[k] for k in avg_me if isinstance(avg_me[k], (int, float))}
                 diff_duo = {k: avg_duo[k] - avg_me[k] for k in avg_duo if isinstance(avg_duo[k], (int, float))}
 
-                with col1:
-                    display_player_card(target_name, top_champs_me, avg_me, badges_me, ROLE_ICONS.get(role_me, "UNK"), diff_me, '#00c6ff', data_me_norm)
-                with col2:
-                    display_player_card(duo_name, top_champs_duo, avg_duo, badges_duo, ROLE_ICONS.get(role_duo, "UNK"), diff_duo, '#ff0055', data_duo_norm)
-
+                with col1: display_player_card(target_name, top_champs_me, avg_me, badges_me, ROLE_ICONS.get(role_me, "UNK"), diff_me, '#00c6ff')
+                with col2: display_player_card(duo_name, top_champs_duo, avg_duo, badges_duo, ROLE_ICONS.get(role_duo, "UNK"), diff_duo, '#ff0055')
             else:
                 st.markdown("<br>", unsafe_allow_html=True)
-                st.markdown(f"""
-                <div class="verdict-box" style="border-color:#888;">
-                    <div style="font-size:32px; font-weight:900; color:#888;">{T["solo"]}</div>
-                    <div style="font-size:16px; color:#aaa;">{T["solo_sub"]}</div>
-                </div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="verdict-box" style="border-color:#888;"><div style="font-size:32px; font-weight:900; color:#888;">LOUP SOLITAIRE</div><div style="font-size:16px; color:#aaa;">Aucun duo récurrent trouvé.</div></div>""", unsafe_allow_html=True)
