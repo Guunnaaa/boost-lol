@@ -8,7 +8,7 @@ import concurrent.futures
 import threading
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V50", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V47", layout="wide")
 
 # --- API KEY ---
 try:
@@ -21,6 +21,14 @@ except FileNotFoundError:
 BACKGROUND_IMAGE_URL = "https://media.discordapp.net/attachments/1065027576572518490/1179469739770630164/face_tiled.jpg?ex=657a90f2&is=65681bf2&hm=123"
 DD_VERSION = "13.24.1"
 
+# --- AUTO-UPDATE VERSION ---
+@st.cache_data(ttl=3600)
+def get_dd_version():
+    try: return requests.get("https://ddragon.leagueoflegends.com/api/versions.json").json()[0]
+    except: return "14.23.1"
+
+DD_VERSION = get_dd_version()
+
 # --- QUEUE MAP ---
 QUEUE_MAP = {
     "Ranked Solo/Duo": 420,
@@ -30,14 +38,6 @@ QUEUE_MAP = {
     "ARAM": 450,
     "Arena": 1700
 }
-
-# --- AUTO-UPDATE VERSION ---
-@st.cache_data(ttl=3600)
-def get_dd_version():
-    try: return requests.get("https://ddragon.leagueoflegends.com/api/versions.json").json()[0]
-    except: return "14.23.1"
-
-DD_VERSION = get_dd_version()
 
 # --- TRADUCTIONS ---
 TRANSLATIONS = {
@@ -53,7 +53,7 @@ TRANSLATIONS = {
         "loading": "Analyse tactique en cours...",
         "role_hyper": "CARRY", "role_lead": "MENEUR", "role_equal": "PARTENAIRE", "role_supp": "SOUTIEN", "role_gap": "ROOKIE",
         "q_surv": "Injouable (KDA)", "q_dmg": "Gros Dégâts", "q_obj": "Destructeur", "q_vis": "Contrôle Map", "q_bal": "Polyvalent", "q_supp": "Excellent Support",
-        "f_feed": "Meurt trop souvent", "f_afk": "Dégâts faibles", "f_no_obj": "Ignore objectifs", "f_blind": "Vision faible", "f_farm": "Farm faible", "f_ok": "Solide",
+        "f_feed": "Meurt trop", "f_afk": "Dégâts faibles", "f_no_obj": "Ignore objectifs", "f_blind": "Vision faible", "f_farm": "Farm faible", "f_ok": "Solide",
         "stats": "STATS", "combat": "COMBAT", "eco": "ÉCONOMIE", "vision": "VISION & MAP",
         "error_no_games": "Aucune partie trouvée.", "error_hint": "Vérifie la région ou le mode de jeu."
     },
@@ -142,6 +142,7 @@ st.markdown(f'<div class="main-title">{T["title"]}</div>', unsafe_allow_html=Tru
 # --- FORMULAIRE ---
 with st.form("search_form"):
     c1, c2, c3 = st.columns([3, 1, 1], gap="small")
+    
     with c1:
         st.markdown(f"""
         <div class="input-row">
@@ -169,47 +170,30 @@ def safe_format(text, target, duo):
     try: return text.format(target=target, duo=duo)
     except: return text
 
-# --- ANALYSE QUALITÉ CORRIGÉE ---
+# --- FONCTION RENOMMÉE CORRECTEMENT ---
 def analyze_qualities(stats, role, lang_dict):
     qualities, flaws = [], []
     
-    # Qualités
-    if stats['kda'] > 3.5: qualities.append(lang_dict.get("q_surv", "High KDA"))
+    # --- QUALITÉS ---
+    if stats['kda'] > 3.5: qualities.append(lang_dict.get("q_surv", "Solid KDA"))
     if stats['obj'] > 5000: qualities.append(lang_dict.get("q_obj", "Obj Dmg"))
     if stats['dpm'] > 750: qualities.append(lang_dict.get("q_dmg", "High Dmg"))
     if stats['vis'] > 35: qualities.append(lang_dict.get("q_vis", "Vision"))
     
-    # Défauts (Force un défaut)
-    scores = {
-        'kda': stats['kda'] / 3.0,
-        'dpm': stats['dpm'] / 500.0,
-        'vis': stats['vis'] / 25.0,
-        'obj': stats['obj'] / 3000.0,
-        'gold': stats['gold'] / 400.0
-    }
-    
-    # Filtrage selon le rôle pour ne pas blâmer injustement
-    if role == "UTILITY": # Support: on ignore farm et dégâts
-        scores.pop('dpm', None)
-        scores.pop('gold', None)
-    elif role == "JUNGLE": # Jungle: obj important
-        scores['obj'] = stats['obj'] / 5000.0
-    else: # Laners: obj moins important pour défaut
-        scores['obj'] = stats['obj'] / 2000.0
+    # --- DÉFAUTS ---
+    flaw = lang_dict.get("f_ok", "Solid")
+    if role == "UTILITY":
+        if stats['vis'] < 20: flaw = lang_dict.get("f_blind", "No Vis")
+        elif stats['kda'] < 2.0: flaw = lang_dict.get("f_feed", "Feed")
+    elif role == "JUNGLE":
+        if stats['obj'] < 1000: flaw = lang_dict.get("f_no_obj", "No Obj")
+        elif stats['kda'] < 2.0: flaw = lang_dict.get("f_feed", "Feed")
+    else:
+        if stats['dpm'] < 300: flaw = lang_dict.get("f_afk", "Low Dmg")
+        elif stats['kda'] < 1.8: flaw = lang_dict.get("f_feed", "Feed")
+        elif stats['gold'] < 300: flaw = lang_dict.get("f_farm", "Low Farm")
 
-    worst_stat = min(scores, key=scores.get)
-    
-    flaws_map = {
-        'kda': lang_dict.get("f_feed", "Feed"),
-        'dpm': lang_dict.get("f_afk", "Low Dmg"),
-        'vis': lang_dict.get("f_blind", "No Vis"),
-        'obj': lang_dict.get("f_no_obj", "No Obj"),
-        'gold': lang_dict.get("f_farm", "Low Farm")
-    }
-    
-    flaw = flaws_map.get(worst_stat, "Ok")
     q = qualities[0] if qualities else lang_dict.get("q_bal", "Balanced")
-    
     if role == "UTILITY" and q == lang_dict.get("q_bal"): q = lang_dict.get("q_supp", "Support")
     return q, flaw
 
