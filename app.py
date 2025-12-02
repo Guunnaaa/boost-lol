@@ -3,10 +3,10 @@ import requests
 import time
 from urllib.parse import quote
 from collections import Counter
-import concurrent.futures # C'est ça le secret de la vitesse
+import concurrent.futures
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Investigator V25 (Turbo)", layout="wide")
+st.set_page_config(page_title="LoL Duo Investigator V24", layout="wide")
 
 # --- API KEY ---
 try:
@@ -59,6 +59,23 @@ st.markdown(
         -webkit-text-fill-color: transparent;
     }}
     
+    /* DPM LINK STYLE */
+    .dpm-link {{
+        color: #888;
+        font-size: 13px;
+        text-decoration: none;
+        transition: 0.3s;
+        font-style: italic;
+        display: block;
+        text-align: right;
+        margin-top: -10px; /* Remonte un peu vers l'input */
+        margin-bottom: 10px;
+    }}
+    .dpm-link:hover {{
+        color: #ff0055;
+        text-decoration: underline;
+    }}
+
     /* PLAYER PANELS */
     .player-panel {{
         background: rgba(255, 255, 255, 0.03);
@@ -116,6 +133,8 @@ with st.form("search_form"):
     c1, c2 = st.columns([4, 1], gap="medium")
     with c1:
         riot_id_input = st.text_input("Riot ID", placeholder="Exemple: Sardoche#EUW")
+        # --- LE LIEN DPM EST ICI ---
+        st.markdown('<a href="https://dpm.lol" target="_blank" class="dpm-link">🔍 Pseudo introuvable ? Cherche sur dpm.lol</a>', unsafe_allow_html=True)
     with c2:
         region_select = st.selectbox("Region", ["EUW1", "NA1", "KR", "EUN1", "TR1"])
     
@@ -164,7 +183,7 @@ def get_matches_from_api(puuid, region, api_key):
     url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue=420&start=0&count=20&api_key={api_key}"
     return requests.get(url)
 
-# Pas de cache ici car on va paralléliser cette fonction
+# Fonction non cachée pour le parallélisme
 def fetch_match_detail(match_id, region, api_key):
     url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/{match_id}?api_key={api_key}"
     return requests.get(url).json()
@@ -184,7 +203,6 @@ if submitted:
         name_encoded = quote(name_raw)
         region = get_regions(region_select)
         
-        # 1. API CALLS (Séquentiel - Rapide)
         with st.spinner('Connexion aux serveurs Riot...'):
             try:
                 resp_acc = get_puuid_from_api(name_encoded, tag, region, API_KEY)
@@ -203,19 +221,15 @@ if submitted:
                 st.error(f"Erreur API: {e}")
                 st.stop()
 
-            # 2. ANALYSIS LOOP (PARALLÉLISÉ - VITESSE TURBO)
+            # 2. ANALYSIS LOOP (PARALLÉLISÉ)
             duo_data = {} 
             target_name = riot_id_input 
             
-            # --- C'EST ICI QUE LA MAGIE OPÈRE ---
             with st.spinner(f'Analyse SIMULTANÉE des 20 dernières parties... 🚀'):
                 
-                # On utilise ThreadPoolExecutor pour lancer 10 requêtes en même temps
                 with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-                    # On prépare les tâches
                     future_to_match = {executor.submit(fetch_match_detail, m_id, region, API_KEY): m_id for m_id in match_ids}
                     
-                    # On récupère les résultats au fur et à mesure
                     for future in concurrent.futures.as_completed(future_to_match):
                         try:
                             data = future.result()
@@ -227,7 +241,6 @@ if submitted:
                             if me:
                                 target_name = me.get('riotIdGameName', name_raw)
                                 
-                                # My Stats Wrapper
                                 my_s = {
                                     'kda': (me['kills'] + me['assists']) / max(1, me['deaths']),
                                     'dmg': me['totalDamageDealtToChampions'],
@@ -258,7 +271,7 @@ if submitted:
                                         d['champs'].append(p['championName'])
                                         d['my_champs'].append(my_s['champ'])
                                         
-                                        # Accumulate Duo Stats
+                                        # Stats Accumulation
                                         d['stats']['kda'] += (p['kills'] + p['assists']) / max(1, p['deaths'])
                                         d['stats']['dmg'] += p['totalDamageDealtToChampions']
                                         d['stats']['gold'] += p['goldEarned']
@@ -266,7 +279,6 @@ if submitted:
                                         d['stats']['obj'] += p.get('damageDealtToObjectives', 0)
                                         d['stats']['towers'] += p.get('challenges', {}).get('turretTakedowns', 0)
                                         
-                                        # Accumulate My Stats (vs this Duo)
                                         d['my_stats_vs']['kda'] += my_s['kda']
                                         d['my_stats_vs']['dmg'] += my_s['dmg']
                                         d['my_stats_vs']['gold'] += my_s['gold']
@@ -274,7 +286,7 @@ if submitted:
                                         d['my_stats_vs']['obj'] += my_s['obj']
                                         d['my_stats_vs']['towers'] += my_s['towers']
                         except Exception as e:
-                            pass # On ignore les erreurs de connexion isolées
+                            pass 
 
             # 3. FINAL PROCESSING
             st.markdown("---")
@@ -290,23 +302,18 @@ if submitted:
                 g = best_duo['games']
                 duo_name = best_duo['name']
                 
-                # Averages
                 def avg(d, key): return int(d[key] / g)
                 def avg_f(d, key): return round(d[key] / g, 2)
                 
                 s_me = best_duo['my_stats_vs']
                 s_duo = best_duo['stats']
                 
-                # PILLARS
                 score_combat_me = (s_me['kda'] * 2) + (s_me['dmg'] / 1000)
                 score_combat_duo = (s_duo['kda'] * 2) + (s_duo['dmg'] / 1000)
-                
                 score_eco_me = s_me['gold']
                 score_eco_duo = s_duo['gold']
-                
                 score_vis_me = s_me['vis']
                 score_vis_duo = s_duo['vis']
-                
                 score_obj_me = s_me['obj'] + (s_me['towers'] * 2000)
                 score_obj_duo = s_duo['obj'] + (s_duo['towers'] * 2000)
                 
