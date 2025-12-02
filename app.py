@@ -6,7 +6,7 @@ from collections import Counter
 import concurrent.futures
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Investigator V29", layout="wide")
+st.set_page_config(page_title="LoL Duo Investigator V30", layout="wide")
 
 # --- API KEY ---
 try:
@@ -28,7 +28,7 @@ def get_dd_version():
 
 DD_VERSION = get_dd_version()
 
-# --- TRADUCTIONS (Nuancées) ---
+# --- TRADUCTIONS COMPLÈTES (CORRECTIF KEYERROR) ---
 TRANSLATIONS = {
     "FR": {
         "title": "LoL Duo Investigator",
@@ -36,7 +36,7 @@ TRANSLATIONS = {
         "placeholder": "Exemple: Sardoche#EUW",
         "dpm_btn": "🔗 Voir sur dpm.lol",
         
-        # Nouveaux Verdicts Nuancés
+        # Clés Verdicts
         "v_hyper": "CHEF DE GUERRE",
         "s_hyper": "{target} porte la game sur ses épaules",
         "v_carry": "LEADER TACTIQUE",
@@ -50,21 +50,28 @@ TRANSLATIONS = {
 
         "solo": "LOUP SOLITAIRE",
         "solo_sub": "Aucun duo récurrent sur 20 parties.",
-        "loading": "Calcul du Score d'Impact...",
+        "loading": "Analyse tactique en cours...",
+        
+        # Rôles
         "role_hyper": "BOSS",
         "role_carry": "LEADER",
         "role_solid": "PARTNER",
         "role_protected": "PROTÉGÉ",
         "role_passenger": "VIP",
+        
         "stats": "PERF DE",
+        "combat": "COMBAT",
+        "eco": "ÉCONOMIE",
+        "vision": "VISION",
         "error_no_games": "Aucune partie trouvée.",
         "error_hint": "Vérifie la région."
     },
     "EN": {
         "title": "LoL Duo Investigator",
         "btn_scan": "START SCAN",
-        "placeholder": "Name#TAG",
+        "placeholder": "Example: Faker#KR1",
         "dpm_btn": "🔗 Check dpm.lol",
+        
         "v_hyper": "WARLORD",
         "s_hyper": "{target} is hard carrying the game",
         "v_carry": "TACTICAL LEADER",
@@ -75,20 +82,54 @@ TRANSLATIONS = {
         "s_protected": "{target} helps (Obj/KDA) but {duo} dominates",
         "v_passenger": "VIP PASSENGER",
         "s_passenger": "{target} is heavily carried by {duo}",
+
         "solo": "LONE WOLF",
         "solo_sub": "No recurring partner found.",
-        "loading": "Calculating Impact Score...",
+        "loading": "Tactical analysis in progress...",
+        
         "role_hyper": "BOSS",
         "role_carry": "LEADER",
         "role_solid": "PARTNER",
         "role_protected": "PROTÉGÉ",
         "role_passenger": "VIP",
+        
         "stats": "STATS FOR",
+        "combat": "COMBAT",
+        "eco": "ECONOMY",
+        "vision": "VISION",
         "error_no_games": "No games found.",
         "error_hint": "Check Region."
     },
-    "ES": {"title": "Detector LoL", "btn_scan": "ANALIZAR", "dpm_btn": "Ver dpm.lol", "v_hyper": "GENERAL", "v_carry":"LIDER", "v_solid":"SOLIDO", "v_protected":"ESCUDERO", "v_passenger":"TURISTA", "placeholder": "Nombre#TAG", "solo": "SOLO", "solo_sub": "Sin duo", "loading": "Cargando...", "stats": "STATS", "role_hyper":"BOSS", "role_carry":"LIDER", "role_solid":"SOCIO", "role_protected":"AYUDA", "role_passenger":"VIP"},
-    "KR": {"title": "LoL 듀오 분석", "btn_scan": "분석 시작", "dpm_btn": "dpm.lol 확인", "v_hyper": "하드 캐리", "v_carry":"리더", "v_solid":"완벽 듀오", "v_protected":"서포터", "v_passenger":"버스 승객", "placeholder": "이름#태그", "solo": "솔로", "solo_sub": "듀오 없음", "loading": "분석 중...", "stats": "통계", "role_hyper":"대장", "role_carry":"리더", "role_solid":"파트너", "role_protected":"보호", "role_passenger":"승객"}
+    "ES": {
+        "title": "Detector LoL",
+        "btn_scan": "ANALIZAR",
+        "placeholder": "Ejemplo: Ibai#EUW",
+        "dpm_btn": "Ver dpm.lol",
+        "v_hyper": "GENERAL", "s_hyper": "{target} carrilea fuerte",
+        "v_carry": "LIDER", "s_carry": "{target} lidera, {duo} sigue",
+        "v_solid": "DUO SÓLIDO", "s_solid": "Contribución igual",
+        "v_protected": "ESCUDERO", "s_protected": "{target} ayuda pero {duo} domina",
+        "v_passenger": "TURISTA", "s_passenger": "{target} es carrileado totalmente",
+        "solo": "SOLO", "solo_sub": "Sin duo",
+        "loading": "Cargando...",
+        "role_hyper": "BOSS", "role_carry": "LIDER", "role_solid": "SOCIO", "role_protected": "AYUDA", "role_passenger": "VIP",
+        "stats": "STATS", "combat":"COMBATE", "eco":"ECONOMIA", "vision":"VISION", "error_no_games":"No partidas", "error_hint":"Region?"
+    },
+    "KR": {
+        "title": "LoL 듀오 분석",
+        "btn_scan": "분석 시작",
+        "placeholder": "예: Hide on bush#KR1",
+        "dpm_btn": "dpm.lol 확인",
+        "v_hyper": "하드 캐리", "s_hyper": "{target} 님이 캐리 중",
+        "v_carry": "리더", "s_carry": "{target} 리드, {duo} 서포트",
+        "v_solid": "완벽 듀오", "s_solid": "동등한 실력",
+        "v_protected": "서포터", "s_protected": "{target} 도움, {duo} 지배",
+        "v_passenger": "버스 승객", "s_passenger": "{target} 님이 업혀갑니다",
+        "solo": "솔로", "solo_sub": "듀오 없음",
+        "loading": "분석 중...",
+        "role_hyper": "대장", "role_carry": "리더", "role_solid": "파트너", "role_protected": "보호", "role_passenger": "승객",
+        "stats": "통계", "combat":"전투", "eco":"경제", "vision":"시야", "error_no_games":"게임 없음", "error_hint":"지역 확인"
+    }
 }
 
 # --- CSS STYLES ---
@@ -157,14 +198,21 @@ st.markdown(
     """, unsafe_allow_html=True
 )
 
-st.markdown('<div class="main-title">LoL Duo Investigator</div>', unsafe_allow_html=True)
+# --- HEADER & LANGUAGE ---
+c_title, c_lang = st.columns([5, 1])
+with c_lang:
+    selected_lang = st.selectbox("Language", ["FR", "EN", "ES", "KR"], label_visibility="collapsed")
+
+T = TRANSLATIONS[selected_lang]
+
+st.markdown(f'<div class="main-title">{T["title"]}</div>', unsafe_allow_html=True)
 
 # --- FORMULAIRE ---
 with st.form("search_form"):
     c_input, c_dpm, c_reg, c_mode, c_lang = st.columns([4, 1.2, 1.2, 1.2, 1], gap="small")
     with c_lang:
-        selected_lang = st.selectbox("Lang", ["FR", "EN", "ES", "KR"])
-        T = TRANSLATIONS[selected_lang]
+        # Hack invisible pour garder l'alignement
+        st.write("")
     with c_input:
         riot_id_input = st.text_input("Riot ID", placeholder=T["placeholder"])
     with c_dpm:
@@ -309,46 +357,37 @@ if submitted:
                 s_me = best_duo['my_stats_vs']
                 s_duo = best_duo['stats']
                 
-                # --- NOUVELLE FORMULE DE SCORE (FAIR-PLAY) ---
-                # On donne beaucoup de poids aux objectifs et à la survie (KDA)
-                # DPM est important mais pas unique.
-                
                 def calc_score(s):
                     kda = s['kda'] / g
                     dpm = s['dpm'] / g
                     obj = s['obj'] / g
                     vis = s['vis'] / g
-                    # Formule : 
-                    # 1 KDA = 100 pts
-                    # 1 DPM = 0.5 pts
-                    # 1000 ObjDmg = 150 pts (Valorise les objectifs !)
-                    # 1 Vision = 10 pts
                     score = (kda * 100) + (dpm * 0.5) + (obj * 0.15) + (vis * 10)
                     return score
 
                 score_me = calc_score(s_me)
                 score_duo = calc_score(s_duo)
-                
                 ratio = score_me / max(1, score_duo)
                 
-                # --- 5 NIVEAUX DE VERDICT ---
-                if ratio > 1.3:
-                    state = "BOOSTER_HARD" # Tu es le boss
-                elif ratio > 1.1:
-                    state = "BOOSTER_SOFT" # Tu es leader
-                elif ratio < 0.7:
-                    state = "BOOSTED_HARD" # Passager
-                elif ratio < 0.9:
-                    state = "BOOSTED_SOFT" # Protégé (Cas de cry)
-                else:
-                    state = "EQUAL" # Duo solide
+                if ratio > 1.3: state = "BOOSTER_HARD" 
+                elif ratio > 1.1: state = "BOOSTER_SOFT" 
+                elif ratio < 0.7: state = "BOOSTED_HARD" 
+                elif ratio < 0.9: state = "BOOSTED_SOFT" 
+                else: state = "EQUAL"
 
                 winrate = int((best_duo['wins']/g)*100)
 
-                # --- CONFIGURATION AFFICHAGE SELON ETAT ---
+                # --- CONFIGURATION AFFICHAGE ---
+                # Default (Equal)
+                header_color = "#00ff99"
+                title_text = T["v_solid"]
+                sub_text = T["s_solid"]
+                role_me, role_duo = "r-solid", "r-solid"
+                name_me, name_duo = T["role_solid"], T["role_solid"]
+
                 if state == "BOOSTED_HARD":
                     header_color = "#ff4444"
-                    title_text = T["verdict_boosted"]
+                    title_text = T["v_passenger"] # Utilisez v_passenger (TOURISTE) pas verdict_boosted
                     sub_text = T["s_passenger"].format(target=target_name, duo=duo_name)
                     role_me, role_duo = "r-pass", "r-hyper"
                     name_me, name_duo = T["role_passenger"], T["role_hyper"]
@@ -357,32 +396,25 @@ if submitted:
                         with c2: st.image(CLOWN_IMAGE_URL, use_column_width=True)
 
                 elif state == "BOOSTED_SOFT":
-                    header_color = "#FFA500" # Orange
+                    header_color = "#FFA500"
                     title_text = T["v_protected"]
                     sub_text = T["s_protected"].format(target=target_name, duo=duo_name)
                     role_me, role_duo = "r-prot", "r-carry"
                     name_me, name_duo = T["role_protected"], T["role_carry"]
 
                 elif state == "BOOSTER_HARD":
-                    header_color = "#FFD700" # Gold
+                    header_color = "#FFD700"
                     title_text = T["v_hyper"]
                     sub_text = T["s_hyper"].format(target=target_name)
                     role_me, role_duo = "r-hyper", "r-pass"
                     name_me, name_duo = T["role_hyper"], T["role_passenger"]
 
                 elif state == "BOOSTER_SOFT":
-                    header_color = "#00BFFF" # Blue
+                    header_color = "#00BFFF"
                     title_text = T["v_carry"]
                     sub_text = T["s_carry"].format(target=target_name, duo=duo_name)
                     role_me, role_duo = "r-carry", "r-prot"
                     name_me, name_duo = T["role_carry"], T["role_protected"]
-
-                else: # EQUAL
-                    header_color = "#00ff99"
-                    title_text = T["v_solid"]
-                    sub_text = T["s_solid"]
-                    role_me, role_duo = "r-solid", "r-solid"
-                    name_me, name_duo = T["role_solid"], T["role_solid"]
 
                 st.markdown(f"""
                 <div class="verdict-banner" style="border-color:{header_color}">
@@ -410,10 +442,13 @@ if submitted:
                     st.markdown(html_champs, unsafe_allow_html=True)
                     
                     st.markdown(f"<div style='text-align:center; color:#888; margin-bottom:15px'>{T['stats']} {target_name}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='color:#666; font-size:12px; font-weight:bold; margin-top:10px;'>{T['combat']}</div>", unsafe_allow_html=True)
                     render_stat_row("KDA", avg_f(s_me, 'kda'), avg_f(s_me, 'kda') - avg_f(s_duo, 'kda'))
                     render_stat_row("DPM", avg(s_me, 'dpm'), avg(s_me, 'dpm') - avg(s_duo, 'dpm'))
+                    st.markdown(f"<div style='color:#666; font-size:12px; font-weight:bold; margin-top:15px;'>{T['eco']} / {T['vision']}</div>", unsafe_allow_html=True)
                     render_stat_row("Gold", avg(s_me, 'gold'), avg(s_me, 'gold') - avg(s_duo, 'gold'))
                     render_stat_row("Vision", avg(s_me, 'vis'), avg(s_me, 'vis') - avg(s_duo, 'vis'))
+                    st.markdown(f"<div style='color:#666; font-size:12px; font-weight:bold; margin-top:15px;'>OBJECTIVES</div>", unsafe_allow_html=True)
                     render_stat_row("Obj Dmg", avg(s_me, 'obj'), avg(s_me, 'obj') - avg(s_duo, 'obj'))
                     render_stat_row("Towers", avg_f(s_me, 'towers'), avg_f(s_me, 'towers') - avg_f(s_duo, 'towers'))
                     st.markdown("</div>", unsafe_allow_html=True)
@@ -433,10 +468,13 @@ if submitted:
                     st.markdown(html_champs_d, unsafe_allow_html=True)
                     
                     st.markdown(f"<div style='text-align:center; color:#888; margin-bottom:15px'>{T['stats']} {duo_name}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='color:#666; font-size:12px; font-weight:bold; margin-top:10px;'>{T['combat']}</div>", unsafe_allow_html=True)
                     render_stat_row("KDA", avg_f(s_duo, 'kda'), avg_f(s_duo, 'kda') - avg_f(s_me, 'kda'))
                     render_stat_row("DPM", avg(s_duo, 'dpm'), avg(s_duo, 'dpm') - avg(s_me, 'dpm'))
+                    st.markdown(f"<div style='color:#666; font-size:12px; font-weight:bold; margin-top:15px;'>{T['eco']} / {T['vision']}</div>", unsafe_allow_html=True)
                     render_stat_row("Gold", avg(s_duo, 'gold'), avg(s_duo, 'gold') - avg(s_me, 'gold'))
                     render_stat_row("Vision", avg(s_duo, 'vis'), avg(s_duo, 'vis') - avg(s_me, 'vis'))
+                    st.markdown(f"<div style='color:#666; font-size:12px; font-weight:bold; margin-top:15px;'>OBJECTIVES</div>", unsafe_allow_html=True)
                     render_stat_row("Obj Dmg", avg(s_duo, 'obj'), avg(s_duo, 'obj') - avg(s_me, 'obj'))
                     render_stat_row("Towers", avg_f(s_duo, 'towers'), avg_f(s_duo, 'towers') - avg_f(s_me, 'towers'))
                     st.markdown("</div>", unsafe_allow_html=True)
