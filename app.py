@@ -9,7 +9,7 @@ import concurrent.futures
 import threading
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V62", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V63", layout="wide")
 
 # --- API KEY ---
 try:
@@ -34,10 +34,10 @@ ROLE_ICONS = {
     "BOTTOM": "🏹 ADC", "UTILITY": "🩹 SUPP", "UNKNOWN": "❓ FILL"
 }
 
-# --- MAP DRAPEAUX (Définition avant utilisation) ---
+# --- MAP DRAPEAUX ---
 LANG_MAP = {"🇫🇷 FR": "FR", "🇺🇸 EN": "EN", "🇪🇸 ES": "ES", "🇰🇷 KR": "KR"}
 
-# --- CSS MODERNE (HEXTECH UI V2) ---
+# --- CSS MODERNE (HEXTECH DARK V3) ---
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap');
@@ -53,8 +53,8 @@ st.markdown(f"""
         max-width: 1400px !important; 
         padding-top: 3rem !important;
         padding-bottom: 3rem !important;
-        background: rgba(12, 12, 12, 0.95); backdrop-filter: blur(15px);
-        border-radius: 15px; border: 1px solid #333; box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+        background: rgba(12, 12, 12, 0.96); backdrop-filter: blur(15px); /* Plus sombre */
+        border-radius: 15px; border: 1px solid #333; box-shadow: 0 25px 60px rgba(0,0,0,0.95);
         margin-top: 20px !important;
     }}
 
@@ -68,8 +68,9 @@ st.markdown(f"""
     
     /* CARTE JOUEUR */
     .player-card {{
-        background: rgba(255, 255, 255, 0.03); border-radius: 16px; padding: 20px;
-        border: 1px solid rgba(255,255,255,0.05); text-align: center; height: 100%;
+        background: rgba(30, 30, 30, 0.5); border-radius: 16px; padding: 25px; /* Plus sombre et aéré */
+        border: 1px solid rgba(255,255,255,0.08); text-align: center; height: 100%;
+        box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
     }}
     .player-name {{ font-size: 28px; font-weight: 800; color: white; margin-bottom: 5px; }}
     .player-sub {{ font-size: 14px; color: #aaa; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }}
@@ -85,22 +86,22 @@ st.markdown(f"""
     .b-gold {{ background: rgba(255, 215, 0, 0.15); color: #FFD700; border: 1px solid #FFD700; }}
 
     /* STATS GRID AVEC DIFF */
-    .stat-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; margin-bottom: 20px; }}
-    .stat-item {{ background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; text-align: left; }}
+    .stat-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; margin-bottom: 0px; }}
+    .stat-item {{ background: rgba(0,0,0,0.3); padding: 12px; border-radius: 10px; text-align: left; border: 1px solid rgba(255,255,255,0.05); }}
     .stat-val-container {{ display: flex; align-items: center; gap: 8px; }}
-    .stat-val {{ font-size: 18px; font-weight: 700; color: white; }}
-    .stat-lbl {{ font-size: 11px; color: #888; text-transform: uppercase; margin-top: 4px; }}
+    .stat-val {{ font-size: 20px; font-weight: 700; color: white; }}
+    .stat-lbl {{ font-size: 11px; color: #999; text-transform: uppercase; margin-top: 4px; font-weight: 600; letter-spacing: 0.5px; }}
     
     /* DIFFERENCES VERT/ROUGE */
-    .stat-diff {{ font-size: 12px; font-weight: 700; padding: 2px 4px; border-radius: 4px; }}
-    .pos {{ color: #00ff99; background: rgba(0,255,153,0.1); }} 
-    .neg {{ color: #ff4444; background: rgba(255,68,68,0.1); }}
-    .neutral {{ color: #666; }}
+    .stat-diff {{ font-size: 12px; font-weight: 700; padding: 2px 5px; border-radius: 4px; }}
+    .pos {{ color: #00ff99; background: rgba(0,255,153,0.15); }} 
+    .neg {{ color: #ff4444; background: rgba(255,68,68,0.15); }}
+    .neutral {{ color: #888; }}
 
     /* VERDICT BANNER */
     .verdict-box {{
-        text-align: center; padding: 30px; border-radius: 16px; margin: 20px 0 30px 0;
-        background: rgba(0,0,0,0.4); border: 2px solid #333;
+        text-align: center; padding: 30px; border-radius: 16px; margin: 20px 0 40px 0;
+        background: rgba(20, 20, 20, 0.8); border: 2px solid #333; /* Plus sombre */
     }}
     
     /* DPM BUTTON */
@@ -113,9 +114,9 @@ st.markdown(f"""
     .stButton > button {{
         width: 100%; height: 55px; background: linear-gradient(135deg, #ff0055, #cc0044);
         color: white; font-size: 20px; font-weight: 800; border: none; border-radius: 10px;
-        text-transform: uppercase; transition: 0.3s;
+        text-transform: uppercase; transition: 0.3s; box-shadow: 0 0 15px rgba(255, 0, 85, 0.3);
     }}
-    .stButton > button:hover {{ transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,0,60,0.4); }}
+    .stButton > button:hover {{ transform: translateY(-2px); box-shadow: 0 5px 25px rgba(255,0,60,0.5); }}
     
     /* HIDE INPUT LABEL */
     .stTextInput > label {{ display: none; }}
@@ -125,7 +126,6 @@ st.markdown(f"""
 # --- HEADER & LANGUAGE ---
 c_title, c_lang = st.columns([5, 1])
 with c_lang:
-    # Utilisation de LANG_MAP défini plus haut
     selected_label = st.selectbox("Lang", list(LANG_MAP.keys()), label_visibility="collapsed")
     lang_code = LANG_MAP[selected_label]
 
@@ -185,8 +185,8 @@ def determine_playstyle(stats, role):
     if not badges: badges.append(("⚖️ Standard", "b-blue"))
     return badges[:3] 
 
-# --- FONCTION GRAPHIQUE ---
-def create_radar(data_list, names, colors, title=None, height=300, show_legend=True):
+# --- FONCTION GRAPHIQUE AMÉLIORÉE ---
+def create_radar(data_list, names, colors, title=None, height=400, show_legend=True):
     categories = ['Combat (DPM)', 'Gold', 'Vision', 'Objectifs', 'Survie (KDA)']
     fig = go.Figure()
 
@@ -197,22 +197,23 @@ def create_radar(data_list, names, colors, title=None, height=300, show_legend=T
             fill='toself',
             name=names[i],
             line_color=colors[i],
-            opacity=0.6 if len(data_list) > 1 else 0.8,
-            marker=dict(size=4)
+            opacity=0.7, # Plus vibrant
+            marker=dict(size=5)
         ))
 
     fig.update_layout(
         polar=dict(
-            radialaxis=dict(visible=True, range=[0, 100], showticklabels=False, linecolor='rgba(255,255,255,0.2)', gridcolor='rgba(255,255,255,0.1)'),
-            angularaxis=dict(linecolor='rgba(255,255,255,0.2)', gridcolor='rgba(255,255,255,0.1)', tickfont=dict(color='#ccc', size=10))
+            bgcolor='rgba(0,0,0,0)',
+            radialaxis=dict(visible=True, range=[0, 100], showticklabels=False, linecolor='#555', gridcolor='#444', gridwidth=1), # Grille plus sombre et nette
+            angularaxis=dict(linecolor='#555', gridcolor='#444', gridwidth=1, tickfont=dict(color='white', size=12, weight='bold')) # Labels plus clairs
         ),
         showlegend=show_legend,
-        legend=dict(font=dict(color='white'), orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5),
+        legend=dict(font=dict(color='white', size=12), orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5, bgcolor='rgba(0,0,0,0)'),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(l=40, r=40, t=30 if title else 10, b=30),
+        margin=dict(l=60, r=60, t=40 if title else 20, b=60),
         height=height,
-        title=dict(text=title, x=0.5, y=0.95, font=dict(color='white', size=14)) if title else None
+        title=dict(text=title, x=0.5, y=0.95, font=dict(color='white', size=16)) if title else None
     )
     return fig
 
@@ -408,8 +409,8 @@ if submitted:
                 data_me_norm = [norm(avg_me['dmg_min'], 1000), norm(avg_me['gold_min'], 600), norm(avg_me['vis_min'], 2.5), norm(avg_me['obj'], 8000), norm(avg_me['kda'], 5)]
                 data_duo_norm = [norm(avg_duo['dmg_min'], 1000), norm(avg_duo['gold_min'], 600), norm(avg_duo['vis_min'], 2.5), norm(avg_duo['obj'], 8000), norm(avg_duo['kda'], 5)]
 
-                # GRAPHIQUE CENTRAL COMPARATIF
-                fig_comp = create_radar([data_me_norm, data_duo_norm], [target_name, duo_name], ['#00c6ff', '#ff0055'], height=350)
+                # GRAPHIQUE CENTRAL COMPARATIF (AMÉLIORÉ & ASSOMBRI)
+                fig_comp = create_radar([data_me_norm, data_duo_norm], [target_name, duo_name], ['#00c6ff', '#ff0055'], height=450)
                 st.plotly_chart(fig_comp, use_container_width=True, config={'displayModeBar': False})
                 
                 # COLONNES JOUEURS
@@ -417,9 +418,9 @@ if submitted:
                 badges_me = determine_playstyle(avg_me, role_me)
                 badges_duo = determine_playstyle(avg_duo, role_duo)
                 
-                def display_player_card(name, champs, stats, badges, role_icon, diff_stats, color_theme, chart_data):
+                def display_player_card(name, champs, stats, badges, role_icon, diff_stats, color_theme):
                     badges_html = "".join([f"<span class='badge {b[1]}'>{b[0]}</span>" for b in badges])
-                    champs_html = "".join([f"<img src='{get_champ_url(c)}' style='width:50px; border-radius:50%; border:2px solid #333; margin:2px;'>" for c in champs])
+                    champs_html = "".join([f"<img src='{get_champ_url(c)}' style='width:55px; border-radius:50%; border:2px solid #333; margin:4px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);'>" for c in champs])
                     
                     # Fonction interne pour générer une ligne de stat avec diff
                     def stat_line(label, value, diff_val, is_percent=False, is_kda=False):
@@ -445,27 +446,24 @@ if submitted:
                     </div>"""
 
                     st.markdown(f"""
-                    <div class="player-card" style="border-top: 3px solid {color_theme};">
+                    <div class="player-card" style="border-top: 4px solid {color_theme};">
                         <div class="player-name">{name}</div>
                         <div class="player-sub">{role_icon}</div>
-                        <div style="margin:10px 0;">{badges_html}</div>
-                        <div style="margin-bottom:15px;">{champs_html}</div>
+                        <div style="margin:15px 0;">{badges_html}</div>
+                        <div style="margin-bottom:20px;">{champs_html}</div>
                         {stat_grid_html}
                     </div>
                     """, unsafe_allow_html=True)
-                    # Petit graph individuel en bas
-                    fig_indiv = create_radar([chart_data], [name], [color_theme], height=200, show_legend=False)
-                    st.plotly_chart(fig_indiv, use_container_width=True, config={'displayModeBar': False})
-
+                    # PLUS DE PETIT GRAPHIQUE ICI
 
                 # Calcul des différences pour l'affichage
                 diff_me = {k: avg_me[k] - avg_duo[k] for k in avg_me if isinstance(avg_me[k], (int, float))}
                 diff_duo = {k: avg_duo[k] - avg_me[k] for k in avg_duo if isinstance(avg_duo[k], (int, float))}
 
                 with col1:
-                    display_player_card(target_name, top_champs_me, avg_me, badges_me, ROLE_ICONS.get(role_me, "UNK"), diff_me, '#00c6ff', data_me_norm)
+                    display_player_card(target_name, top_champs_me, avg_me, badges_me, ROLE_ICONS.get(role_me, "UNK"), diff_me, '#00c6ff')
                 with col2:
-                    display_player_card(duo_name, top_champs_duo, avg_duo, badges_duo, ROLE_ICONS.get(role_duo, "UNK"), diff_duo, '#ff0055', data_duo_norm)
+                    display_player_card(duo_name, top_champs_duo, avg_duo, badges_duo, ROLE_ICONS.get(role_duo, "UNK"), diff_duo, '#ff0055')
 
             else:
                 st.markdown("<br>", unsafe_allow_html=True)
