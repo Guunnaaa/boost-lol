@@ -8,7 +8,7 @@ import concurrent.futures
 import threading
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V46", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V47", layout="wide")
 
 # --- API KEY ---
 try:
@@ -21,7 +21,15 @@ except FileNotFoundError:
 BACKGROUND_IMAGE_URL = "https://media.discordapp.net/attachments/1065027576572518490/1179469739770630164/face_tiled.jpg?ex=657a90f2&is=65681bf2&hm=123"
 DD_VERSION = "13.24.1"
 
-# --- QUEUE MAP (Modes de jeu) ---
+# --- AUTO-UPDATE VERSION ---
+@st.cache_data(ttl=3600)
+def get_dd_version():
+    try: return requests.get("https://ddragon.leagueoflegends.com/api/versions.json").json()[0]
+    except: return "14.23.1"
+
+DD_VERSION = get_dd_version()
+
+# --- QUEUE MAP ---
 QUEUE_MAP = {
     "Ranked Solo/Duo": 420,
     "Ranked Flex": 440,
@@ -31,31 +39,28 @@ QUEUE_MAP = {
     "Arena": 1700
 }
 
-# --- AUTO-UPDATE VERSION ---
-@st.cache_data(ttl=3600)
-def get_dd_version():
-    try: return requests.get("https://ddragon.leagueoflegends.com/api/versions.json").json()[0]
-    except: return "14.23.1"
-
-DD_VERSION = get_dd_version()
-
 # --- TRADUCTIONS ---
 TRANSLATIONS = {
     "FR": {
         "title": "LoL Duo Analyst", "btn_scan": "LANCER L'ANALYSE", "placeholder": "Exemple: Kameto#EUW", "label_id": "Riot ID", "dpm_btn": "🔗 Voir sur dpm.lol",
+        
         "v_hyper": "MVP TOTAL", "s_hyper": "{target} porte {duo} sur ses épaules (1v9)",
         "v_tactician": "MASTERMIND", "s_tactician": "{target} gagne la game pour {duo} grâce à la macro",
         "v_fighter": "GLADIATEUR", "s_fighter": "{target} fait les dégâts, {duo} prend les objectifs",
         "v_solid": "DUO FUSIONNEL", "s_solid": "Synergie parfaite entre {target} et {duo}",
         "v_passive": "EN RETRAIT", "s_passive": "{target} joue safe et laisse {duo} mener le jeu",
         "v_struggle": "EN DIFFICULTÉ", "s_struggle": "{target} peine à suivre le rythme imposé par {duo}",
+
         "solo": "LOUP SOLITAIRE", "solo_sub": "Aucun duo récurrent détecté sur 20 parties.",
         "loading": "Analyse tactique en cours...",
+        
         "role_hyper": "CARRY", "role_lead": "MENEUR", "role_equal": "PARTENAIRE", "role_supp": "SOUTIEN", "role_gap": "ROOKIE",
-        "q_surv": "Injouable (KDA)", "q_dmg": "Gros Dégâts", "q_obj": "Destructeur", "q_vis": "Contrôle Map", "q_bal": "Polyvalent", "q_supp": "Excellent Support",
+        
+        "q_surv": "Injouable (KDA)", "q_dmg": "Gros Dégâts", "q_obj": "Destructeur", "q_vis": "Contrôle Map", "q_bal": "Polyvalent", "q_supp": "Bon Support",
         "f_feed": "Meurt trop", "f_afk": "Dégâts faibles", "f_no_obj": "Ignore objectifs", "f_blind": "Vision faible", "f_farm": "Farm faible", "f_ok": "Solide",
+        
         "stats": "STATS", "combat": "COMBAT", "eco": "ÉCONOMIE", "vision": "VISION & MAP",
-        "error_no_games": "Aucune partie trouvée.", "error_hint": "Vérifie la région ou le mode."
+        "error_no_games": "Aucune partie trouvée.", "error_hint": "Vérifie la région ou le mode de jeu."
     },
     "EN": {
         "title": "LoL Duo Analyst", "btn_scan": "START ANALYSIS", "placeholder": "Example: Faker#KR1", "label_id": "Riot ID", "dpm_btn": "🔗 Check dpm.lol",
@@ -142,20 +147,14 @@ st.markdown(f'<div class="main-title">{T["title"]}</div>', unsafe_allow_html=Tru
 # --- FORMULAIRE ---
 with st.form("search_form"):
     c1, c2, c3 = st.columns([3, 1, 1], gap="small")
-    
     with c1:
-        st.markdown(f"""
-        <div class="input-row">
-            <span class="input-label">{T['label_id']}</span>
-            <a href="https://dpm.lol" target="_blank" class="dpm-button-small">{T['dpm_btn']}</a>
-        </div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="input-row"><span class="input-label">{T['label_id']}</span><a href="https://dpm.lol" target="_blank" class="dpm-button-small">{T['dpm_btn']}</a></div>""", unsafe_allow_html=True)
         riot_id_input = st.text_input("HiddenLabel", placeholder=T["placeholder"], label_visibility="collapsed")
     with c2:
         st.markdown(f"<div style='margin-bottom:5px'><span class='input-label'>Region</span></div>", unsafe_allow_html=True)
         region_select = st.selectbox("Region", ["EUW1", "NA1", "KR", "EUN1", "TR1"], label_visibility="collapsed")
     with c3:
         st.markdown(f"<div style='margin-bottom:5px'><span class='input-label'>Mode</span></div>", unsafe_allow_html=True)
-        # SÉLECTEUR DE MODE CORRIGÉ
         queue_label = st.selectbox("Mode", list(QUEUE_MAP.keys()), label_visibility="collapsed")
     st.markdown("<br>", unsafe_allow_html=True)
     submitted = st.form_submit_button(T["btn_scan"])
@@ -164,37 +163,32 @@ with st.form("search_form"):
 def get_champ_url(champ_name):
     if not champ_name: return "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Poro_0.jpg"
     clean = champ_name.replace(" ", "").replace("'", "").replace(".", "")
-    if clean.lower() == "wukong": clean = "MonkeyKing"
-    if clean.lower() == "renataglasc": clean = "Renata"
-    if clean.lower() == "nunu&willump": clean = "Nunu"
-    if clean.lower() == "kogmaw": clean = "KogMaw"
-    if clean.lower() == "reksai": clean = "RekSai"
-    if clean.lower() == "drmundo": clean = "DrMundo"
-    if clean.lower() == "belveth": clean = "Belveth"
-    return f"https://ddragon.leagueoflegends.com/cdn/{DD_VERSION}/img/champion/{clean}.png"
+    mapping = {"wukong": "MonkeyKing", "renataglasc": "Renata", "nunu&willump": "Nunu", "kogmaw": "KogMaw", "reksai": "RekSai", "drmundo": "DrMundo", "belveth": "Belveth"}
+    return f"https://ddragon.leagueoflegends.com/cdn/{DD_VERSION}/img/champion/{mapping.get(clean.lower(), clean)}.png"
 
 def safe_format(text, target, duo):
     try: return text.format(target=target, duo=duo)
     except: return text
 
-def analyze_qualities(stats, role, lang_dict):
-    """Analyse contextuelle V44"""
+def analyze_qualities_smart(stats, role, lang_dict):
+    """Analyse intelligente avec correction de rôle"""
     qualities, flaws = [], []
     
-    if stats['kda'] > 3.5: qualities.append(lang_dict.get("q_surv", "High KDA"))
+    if stats['kda'] > 3.5: qualities.append(lang_dict.get("q_surv", "Solid KDA"))
     if stats['obj'] > 5000: qualities.append(lang_dict.get("q_obj", "Obj Dmg"))
     if stats['dpm'] > 750: qualities.append(lang_dict.get("q_dmg", "High Dmg"))
     if stats['vis'] > 35: qualities.append(lang_dict.get("q_vis", "Vision"))
     
     flaw = lang_dict.get("f_ok", "Solid")
     
+    # LOGIQUE CONTEXTUELLE (Correctif "Farm Faible" pour supp)
     if role == "UTILITY":
         if stats['vis'] < 20: flaw = lang_dict.get("f_blind", "No Vis")
         elif stats['kda'] < 2.0: flaw = lang_dict.get("f_feed", "Feed")
     elif role == "JUNGLE":
         if stats['obj'] < 1000: flaw = lang_dict.get("f_no_obj", "No Obj")
         elif stats['kda'] < 2.0: flaw = lang_dict.get("f_feed", "Feed")
-    else:
+    else: # Laners
         if stats['dpm'] < 300: flaw = lang_dict.get("f_afk", "Low Dmg")
         elif stats['kda'] < 1.8: flaw = lang_dict.get("f_feed", "Feed")
         elif stats['gold'] < 300: flaw = lang_dict.get("f_farm", "Low Farm")
@@ -334,6 +328,7 @@ if submitted:
                 s_me = best_duo['my_stats_vs']
                 s_duo = best_duo['stats']
                 
+                # --- CALCUL V33 (FAIR) ---
                 def calc_score(s, role):
                     kda = s['kda'] / g
                     dpm = s['dpm'] / g
@@ -360,22 +355,26 @@ if submitted:
                 role_duo_key, role_duo_color = "role_equal", "color-green"
 
                 if state == "BOOSTED_HARD":
-                    header_color, title_text = "#ff4444", T.get("v_struggle")
+                    header_color = "#ff4444"
+                    title_text = T.get("v_struggle")
                     sub_text = safe_format(T.get("s_struggle", ""), target=target_name, duo=duo_name)
                     role_me_key, role_me_color = "role_gap", "color-red"
                     role_duo_key, role_duo_color = "role_hyper", "color-gold"
                 elif state == "BOOSTED_SOFT":
-                    header_color, title_text = "#FFA500", T.get("v_passive")
+                    header_color = "#FFA500"
+                    title_text = T.get("v_passive")
                     sub_text = safe_format(T.get("s_passive", ""), target=target_name, duo=duo_name)
                     role_me_key, role_me_color = "role_supp", "color-orange"
                     role_duo_key, role_duo_color = "role_lead", "color-blue"
                 elif state == "BOOSTER_HARD":
-                    header_color, title_text = "#FFD700", T.get("v_hyper")
+                    header_color = "#FFD700"
+                    title_text = T.get("v_hyper")
                     sub_text = safe_format(T.get("s_hyper", ""), target=target_name, duo=duo_name)
                     role_me_key, role_me_color = "role_hyper", "color-gold"
                     role_duo_key, role_duo_color = "role_gap", "color-red"
                 elif state == "BOOSTER_SOFT":
-                    header_color, title_text = "#00BFFF", T.get("v_tactician")
+                    header_color = "#00BFFF"
+                    title_text = T.get("v_tactician")
                     sub_text = safe_format(T.get("s_tactician", ""), target=target_name, duo=duo_name)
                     role_me_key, role_me_color = "role_lead", "color-blue"
                     role_duo_key, role_duo_color = "role_supp", "color-orange"
@@ -390,6 +389,11 @@ if submitted:
                 </div>""", unsafe_allow_html=True)
 
                 col_left, col_right = st.columns(2, gap="large")
+                
+                stats_me = {'kda': avg_f(s_me, 'kda'), 'dpm': avg(s_me, 'dpm'), 'vis': avg(s_me, 'vis'), 'obj': avg(s_me, 'obj'), 'gold': avg(s_me, 'gold')}
+                stats_duo = {'kda': avg_f(s_duo, 'kda'), 'dpm': avg(s_duo, 'dpm'), 'vis': avg(s_duo, 'vis'), 'obj': avg(s_duo, 'obj'), 'gold': avg(s_duo, 'gold')}
+                
+                # ANALYSE INTELLIGENTE
                 qual, flaw = analyze_qualities_smart(stats_me, main_role_me, T)
                 qual_d, flaw_d = analyze_qualities_smart(stats_duo, main_role_duo, T)
 
