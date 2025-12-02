@@ -6,7 +6,7 @@ from collections import Counter
 import concurrent.futures
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V34", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V35", layout="wide")
 
 # --- API KEY ---
 try:
@@ -27,7 +27,7 @@ def get_dd_version():
 
 DD_VERSION = get_dd_version()
 
-# --- TRADUCTIONS UNIFIÉES (PLUS DE CRASH) ---
+# --- TRADUCTIONS (SECURISÉES) ---
 TRANSLATIONS = {
     "FR": {
         "title": "LoL Duo Analyst",
@@ -37,34 +37,24 @@ TRANSLATIONS = {
         "dpm_btn": "🔗 Voir sur dpm.lol",
         
         # Verdicts
-        "v_hyper": "CARRY SOLITAIRE",
-        "s_hyper": "{target} porte la game sur ses épaules",
-        "v_lead": "LEADER TECHNIQUE",
-        "s_lead": "{target} a un léger avantage statistique",
-        "v_equal": "DUO FUSIONNEL",
-        "s_equal": "Synergie Parfaite : Ils se complètent totalement",
-        "v_supp": "SOUTIEN STRATÉGIQUE",
-        "s_supp": "{target} joue pour l'équipe, {duo} finit le travail",
-        "v_gap": "EN DIFFICULTÉ",
-        "s_gap": "{target} peine à suivre le rythme de {duo}",
+        "v_hyper": "MVP TOTAL", "s_hyper": "{target} domine la faille (Combat & Objectifs)",
+        "v_tactician": "MASTERMIND", "s_tactician": "{target} gagne grâce à la macro",
+        "v_fighter": "GLADIATEUR", "s_fighter": "{target} fait les dégâts, {duo} prend les objectifs",
+        "v_solid": "DUO FUSIONNEL", "s_solid": "Contribution parfaitement équilibrée",
+        "v_passive": "EN RETRAIT", "s_passive": "{target} joue safe, {duo} mène le jeu",
+        "v_struggle": "EN DIFFICULTÉ", "s_struggle": "{target} peine à suivre le rythme de {duo}",
 
         "solo": "LOUP SOLITAIRE",
         "solo_sub": "Aucun duo récurrent sur 20 parties.",
         "loading": "Analyse tactique en cours...",
         
-        # Rôles (Clés unifiées)
-        "role_hyper": "CARRY",
-        "role_lead": "MENEUR",
-        "role_equal": "PARTENAIRE",
-        "role_supp": "SOUTIEN",
-        "role_gap": "ROOKIE",
-        
-        # Qualités/Défauts
-        "q_surv": "Injouable (KDA)", "q_dmg": "Gros Dégâts", "q_obj": "Destructeur", "q_vis": "Contrôle Map", "q_bal": "Polyvalent",
-        "f_feed": "Meurt trop", "f_afk": "Dégâts faibles", "f_no_obj": "Ignore objectifs", "f_blind": "Vision faible", "f_farm": "Farm faible",
-        
+        # Labels
         "stats": "PERF DE", "combat": "COMBAT", "eco": "ÉCONOMIE", "vision": "VISION & MAP",
-        "error_no_games": "Aucune partie trouvée.", "error_hint": "Vérifie la région."
+        "error_no_games": "Aucune partie trouvée.", "error_hint": "Vérifie la région.",
+        
+        # Qualités / Défauts
+        "q_surv": "Injouable (KDA)", "q_dmg": "Gros Dégâts", "q_obj": "Destructeur", "q_vis": "Contrôle Map", "q_bal": "Polyvalent",
+        "f_feed": "Meurt trop", "f_afk": "Dégâts faibles", "f_no_obj": "Ignore objectifs", "f_blind": "Vision faible", "f_farm": "Farm faible", "f_ok": "Solide"
     },
     "EN": {
         "title": "LoL Duo Analyst",
@@ -73,58 +63,22 @@ TRANSLATIONS = {
         "label_id": "Riot ID",
         "dpm_btn": "🔗 Check dpm.lol",
         
-        "v_hyper": "SOLO CARRY",
-        "s_hyper": "{target} is doing everything alone",
-        "v_lead": "TECHNICAL LEADER",
-        "s_lead": "{target} has a slight statistical edge",
-        "v_equal": "PERFECT SYNERGY",
-        "s_equal": "Perfect Match: They complete each other",
-        "v_supp": "STRATEGIC SUPPORT",
-        "s_supp": "{target} sets up the plays, {duo} finishes them",
-        "v_gap": "STRUGGLING",
-        "s_gap": "{target} is having a hard time keeping up",
+        "v_hyper": "TOTAL MVP", "s_hyper": "{target} dominates the rift",
+        "v_tactician": "MASTERMIND", "s_tactician": "{target} wins through macro",
+        "v_fighter": "GLADIATOR", "s_fighter": "{target} deals dmg, {duo} takes objs",
+        "v_solid": "PERFECT DUO", "s_solid": "Balanced contribution",
+        "v_passive": "PASSIVE", "s_passive": "{target} plays safe, {duo} leads",
+        "v_struggle": "STRUGGLING", "s_struggle": "{target} can't keep up with {duo}",
 
         "solo": "SOLO PLAYER", "solo_sub": "No recurring partner found.",
-        "loading": "Analyzing synergy...",
-        
-        "role_hyper": "CARRY",
-        "role_lead": "LEADER",
-        "role_equal": "PARTNER",
-        "role_supp": "SUPPORT",
-        "role_gap": "ROOKIE",
-        
+        "loading": "Analyzing...",
+        "stats": "STATS FOR", "combat": "COMBAT", "eco": "ECONOMY", "vision": "VISION",
+        "error_no_games": "No games found.", "error_hint": "Check Region.",
         "q_surv": "Unkillable", "q_dmg": "Heavy Hitter", "q_obj": "Destroyer", "q_vis": "Map Control", "q_bal": "Balanced",
-        "f_feed": "Dies too much", "f_afk": "Low Dmg", "f_no_obj": "No Objs", "f_blind": "Low Vision", "f_farm": "Low CS",
-
-        "stats": "STATS FOR", "combat": "COMBAT", "eco": "ECONOMY", "vision": "VISION & MAP",
-        "error_no_games": "No games found.", "error_hint": "Check Region."
+        "f_feed": "Too fragile (KDA)", "f_afk": "Low Damage", "f_no_obj": "Ignores Objs", "f_blind": "Low Vision", "f_farm": "Low Farm", "f_ok": "Solid"
     },
-    "ES": {
-        "title": "Analista LoL", "btn_scan": "ANALIZAR", "placeholder": "Ejemplo: Ibai#EUW", "label_id": "Riot ID", "dpm_btn": "Ver dpm.lol",
-        "v_hyper": "MVP TOTAL", "s_hyper": "{target} carrilea solo",
-        "v_lead": "LIDER", "s_lead": "{target} tiene ventaja",
-        "v_equal": "SINERGIA", "s_equal": "Se complementan bien",
-        "v_supp": "APOYO", "s_supp": "{target} ayuda al equipo",
-        "v_gap": "DIFICULTAD", "s_gap": "{target} sufre para seguir",
-        "solo": "SOLO", "solo_sub": "Sin duo", "loading": "Cargando...",
-        "role_hyper": "CARRY", "role_lead": "LIDER", "role_equal": "SOCIO", "role_supp": "APOYO", "role_gap": "NOVATO",
-        "q_surv": "Inmortal", "q_dmg": "Daño", "q_obj": "Torres", "q_vis": "Vision", "q_bal": "Balance",
-        "f_feed": "Muere mucho", "f_afk": "Poco daño", "f_no_obj": "Sin objetivos", "f_blind": "Ciego", "f_farm": "Farm",
-        "stats": "STATS", "combat":"COMBATE", "eco":"ECONOMIA", "vision":"VISION", "error_no_games":"Error", "error_hint":"Region?"
-    },
-    "KR": {
-        "title": "LoL 듀오 분석", "btn_scan": "분석 시작", "placeholder": "예: Hide on bush#KR1", "label_id": "Riot ID", "dpm_btn": "dpm.lol 확인",
-        "v_hyper": "하드 캐리", "s_hyper": "{target} 독무대",
-        "v_lead": "리더", "s_lead": "{target} 우세",
-        "v_equal": "완벽 듀오", "s_equal": "상호 보완",
-        "v_supp": "전략적 서포트", "s_supp": "{target} 조력자",
-        "v_gap": "고전 중", "s_gap": "{target} 역부족",
-        "solo": "솔로", "solo_sub": "듀오 없음", "loading": "분석 중...",
-        "role_hyper": "캐리", "role_lead": "리더", "role_equal": "파트너", "role_supp": "서포터", "role_gap": "신입",
-        "q_surv": "생존", "q_dmg": "딜량", "q_obj": "철거", "q_vis": "시야", "q_bal": "밸런스",
-        "f_feed": "데스", "f_afk": "딜부족", "f_no_obj": "운영부족", "f_blind": "시야부족", "f_farm": "CS부족",
-        "stats": "통계", "combat":"전투", "eco":"경제", "vision":"시야", "error_no_games":"없음", "error_hint":"지역?"
-    }
+    "ES": {"title":"Analista LoL","btn_scan":"ANALIZAR","placeholder":"Ejemplo: Ibai#EUW","label_id":"Riot ID","dpm_btn":"Ver dpm.lol","v_hyper":"MVP TOTAL","s_hyper":"Domina","v_tactician":"ESTRATEGA","s_tactician":"Macro","v_fighter":"GLADIADOR","s_fighter":"Daño","v_solid":"DUO SOLIDO","s_solid":"Equilibrio","v_passive":"PASIVO","s_passive":"Seguro","v_struggle":"DIFICULTAD","s_struggle":"Sufre","solo":"SOLO","solo_sub":"Sin duo","loading":"Cargando...","stats":"STATS","combat":"COMBATE","eco":"ECONOMIA","vision":"VISION","error_no_games":"Error","error_hint":"Region?","q_surv":"Inmortal","q_dmg":"Daño","q_obj":"Torres","q_vis":"Vision","q_bal":"Balance","f_feed":"Muere","f_afk":"Poco daño","f_no_obj":"Sin obj","f_blind":"Ciego","f_farm":"Farm","f_ok":"Bien"},
+    "KR": {"title":"LoL 듀오 분석","btn_scan":"분석 시작","placeholder":"예: Hide on bush#KR1","label_id":"Riot ID","dpm_btn":"dpm.lol 확인","v_hyper":"MVP","s_hyper":"캐리","v_tactician":"전략가","s_tactician":"운영","v_fighter":"전투광","s_fighter":"딜","v_solid":"완벽 듀오","s_solid":"동등","v_passive":"버스","s_passive":"안전","v_struggle":"고전","s_struggle":"역부족","solo":"솔로","solo_sub":"듀오 없음","loading":"분석 중...","stats":"통계","combat":"전투","eco":"경제","vision":"시야","error_no_games":"없음","error_hint":"지역?","q_surv":"생존","q_dmg":"딜량","q_obj":"철거","q_vis":"시야","q_bal":"밸런스","f_feed":"데스","f_afk":"딜부족","f_no_obj":"운영부족","f_blind":"시야부족","f_farm":"CS","f_ok":"굿"}
 }
 
 # --- CSS STYLES ---
@@ -141,13 +95,13 @@ st.markdown(
     }}
     
     .block-container {{
-        max-width: 1300px !important; padding: 2rem !important; margin: auto !important;
+        max-width: 1400px !important; padding: 2rem !important; margin: auto !important;
         background: rgba(12, 12, 12, 0.96); backdrop-filter: blur(20px);
         border-radius: 0px; border-bottom: 2px solid #333; box-shadow: 0 20px 50px rgba(0,0,0,0.9);
     }}
     
     .main-title {{
-        font-size: 50px; font-weight: 900; color: white; text-align: center; margin-bottom: 20px;
+        font-size: 60px; font-weight: 900; color: white; text-align: center; margin-bottom: 20px;
         text-transform: uppercase; letter-spacing: -2px;
         background: -webkit-linear-gradient(#eee, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }}
@@ -168,6 +122,7 @@ st.markdown(
     .player-name {{ font-size: 28px; font-weight: 900; color: white; text-align: center; margin-bottom: 5px; }}
     .player-role {{ font-size: 14px; font-weight: 700; text-align: center; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; padding: 5px; border-radius: 4px; background: rgba(255,255,255,0.05); }}
     
+    /* ROLE COLORS */
     .color-gold {{ color: #FFD700; border-color: #FFD700; }}
     .color-blue {{ color: #00BFFF; border-color: #00BFFF; }}
     .color-green {{ color: #00ff99; border-color: #00ff99; }}
@@ -207,6 +162,7 @@ st.markdown(f'<div class="main-title">{T["title"]}</div>', unsafe_allow_html=Tru
 # --- FORMULAIRE ---
 with st.form("search_form"):
     c1, c2, c3 = st.columns([3, 1, 1], gap="medium")
+    
     with c1:
         st.markdown(f"""
         <div class="input-row">
@@ -236,18 +192,16 @@ def get_champ_url(champ_name):
     if clean.lower() == "belveth": clean = "Belveth"
     return f"https://ddragon.leagueoflegends.com/cdn/{DD_VERSION}/img/champion/{clean}.png"
 
-def analyze_qualities_strict(stats, lang_dict):
-    """Analyse stricte : Trouve TOUJOURS un défaut (la stat la plus basse relative)"""
+def analyze_qualities(stats, lang_dict):
+    """Analyse stricte avec Fallback sécurisé"""
     qualities = []
     
-    # QUALITÉS
-    if stats['kda'] > 3.0: qualities.append(lang_dict["q_surv"])
-    if stats['obj'] > 5000: qualities.append(lang_dict["q_obj"])
-    if stats['dpm'] > 700: qualities.append(lang_dict["q_dmg"])
-    if stats['vis'] > 30: qualities.append(lang_dict["q_vis"])
+    if stats['kda'] > 3.0: qualities.append(lang_dict.get("q_surv", "Solid KDA"))
+    if stats['obj'] > 5000: qualities.append(lang_dict.get("q_obj", "Obj Focus"))
+    if stats['dpm'] > 700: qualities.append(lang_dict.get("q_dmg", "Damage"))
+    if stats['vis'] > 30: qualities.append(lang_dict.get("q_vis", "Vision"))
     
-    # DÉFAUT FORCÉ (Comparaison relative)
-    # On normalise les scores pour trouver le maillon faible
+    # Normalisation pour défauts
     scores = {
         'kda': stats['kda'] / 3.0,
         'dpm': stats['dpm'] / 500.0,
@@ -255,17 +209,21 @@ def analyze_qualities_strict(stats, lang_dict):
         'obj': stats['obj'] / 3000.0,
         'gold': stats['gold'] / 400.0
     }
-    # On prend le minimum
+    
     worst_stat = min(scores, key=scores.get)
     
-    flaw = lang_dict["f_ok"]
-    if worst_stat == 'kda': flaw = lang_dict["f_feed"]
-    elif worst_stat == 'dpm': flaw = lang_dict["f_afk"]
-    elif worst_stat == 'vis': flaw = lang_dict["f_blind"]
-    elif worst_stat == 'obj': flaw = lang_dict["f_no_obj"]
-    elif worst_stat == 'gold': flaw = lang_dict["f_farm"]
+    # Mapping sécurisé avec .get
+    flaws_map = {
+        'kda': lang_dict.get("f_feed", "Feed"),
+        'dpm': lang_dict.get("f_afk", "Low Dmg"),
+        'vis': lang_dict.get("f_blind", "Blind"),
+        'obj': lang_dict.get("f_no_obj", "No Obj"),
+        'gold': lang_dict.get("f_farm", "Poor")
+    }
     
-    q = qualities[0] if qualities else lang_dict["q_bal"]
+    flaw = flaws_map.get(worst_stat, lang_dict.get("f_ok", "Ok"))
+    q = qualities[0] if qualities else lang_dict.get("q_bal", "Balanced")
+    
     return q, flaw
 
 def render_stat_row(label, val, diff, unit=""):
@@ -412,18 +370,18 @@ if submitted:
 
                 # TEXTES
                 header_color = "#00ff99"
-                title_text, sub_text = T["v_equal"], T["s_equal"]
+                title_text, sub_text = T["v_solid"], T["s_solid"]
                 role_me, role_duo = "role_equal", "role_equal"
                 role_col_me, role_col_duo = "color-green", "color-green"
 
                 if state == "BOOSTED_HARD":
                     header_color = "#ff4444"
-                    title_text, sub_text = T["v_gap"], T["s_gap"].format(target=target_name, duo=duo_name)
+                    title_text, sub_text = T["v_struggle"], T["s_struggle"].format(target=target_name, duo=duo_name)
                     role_me, role_col_me = "role_gap", "color-red"
                     role_duo, role_col_duo = "role_hyper", "color-gold"
                 elif state == "BOOSTED_SOFT":
                     header_color = "#FFA500"
-                    title_text, sub_text = T["v_supp"], T["s_supp"].format(target=target_name, duo=duo_name)
+                    title_text, sub_text = T["v_passive"], T["s_passive"].format(target=target_name, duo=duo_name)
                     role_me, role_col_me = "role_supp", "color-orange"
                     role_duo, role_col_duo = "role_lead", "color-blue"
                 elif state == "BOOSTER_HARD":
@@ -450,8 +408,8 @@ if submitted:
                 stats_me = {'kda': avg_f(s_me, 'kda'), 'dpm': avg(s_me, 'dpm'), 'vis': avg(s_me, 'vis'), 'obj': avg(s_me, 'obj'), 'gold': avg(s_me, 'gold')}
                 stats_duo = {'kda': avg_f(s_duo, 'kda'), 'dpm': avg(s_duo, 'dpm'), 'vis': avg(s_duo, 'vis'), 'obj': avg(s_duo, 'obj'), 'gold': avg(s_duo, 'gold')}
                 
-                qual, flaw = analyze_qualities_strict(stats_me, T)
-                qual_d, flaw_d = analyze_qualities_strict(stats_duo, T)
+                qual, flaw = analyze_qualities(stats_me, T)
+                qual_d, flaw_d = analyze_qualities(stats_duo, T)
 
                 with col_left:
                     st.markdown(f"""<div class="player-panel"><div class="player-name">{target_name}</div><div class="player-role {role_col_me}">{T[role_me]}</div>""", unsafe_allow_html=True)
@@ -466,7 +424,7 @@ if submitted:
                     render_stat_row("KDA", stats_me['kda'], stats_me['kda'] - stats_duo['kda'])
                     render_stat_row("DPM", stats_me['dpm'], stats_me['dpm'] - stats_duo['dpm'])
                     st.markdown(f"<div class='stat-section-title'>{T['eco']} / {T['vision']}</div>", unsafe_allow_html=True)
-                    render_stat_row("GOLD", stats_me['gold'], stats_me['gold'] - stats_duo['gold'])
+                    render_stat_row("GOLD", int(avg(s_me, 'gold')), int(avg(s_me, 'gold')) - int(avg(s_duo, 'gold')))
                     render_stat_row("VISION", stats_me['vis'], stats_me['vis'] - stats_duo['vis'])
                     st.markdown(f"<div class='stat-section-title'>OBJECTIVES</div>", unsafe_allow_html=True)
                     render_stat_row("OBJ DMG", stats_me['obj'], stats_me['obj'] - stats_duo['obj'])
@@ -486,7 +444,7 @@ if submitted:
                     render_stat_row("KDA", stats_duo['kda'], stats_duo['kda'] - stats_me['kda'])
                     render_stat_row("DPM", stats_duo['dpm'], stats_duo['dpm'] - stats_me['dpm'])
                     st.markdown(f"<div class='stat-section-title'>{T['eco']} / {T['vision']}</div>", unsafe_allow_html=True)
-                    render_stat_row("GOLD", stats_duo['gold'], stats_duo['gold'] - stats_me['gold'])
+                    render_stat_row("GOLD", int(avg(s_duo, 'gold')), int(avg(s_duo, 'gold')) - int(avg(s_me, 'gold')))
                     render_stat_row("VISION", stats_duo['vis'], stats_duo['vis'] - stats_me['vis'])
                     st.markdown(f"<div class='stat-section-title'>OBJECTIVES</div>", unsafe_allow_html=True)
                     render_stat_row("OBJ DMG", stats_duo['obj'], stats_duo['obj'] - stats_me['obj'])
