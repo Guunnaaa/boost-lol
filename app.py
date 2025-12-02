@@ -7,8 +7,8 @@ from collections import Counter
 import concurrent.futures
 import threading
 
-# --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V53", layout="wide")
+# --- 1. CONFIGURATION ---
+st.set_page_config(page_title="LoL Duo Analyst V55", layout="wide")
 
 # --- API KEY ---
 try:
@@ -17,11 +17,10 @@ except FileNotFoundError:
     st.error("⚠️ API Key missing. Add RIOT_API_KEY to Streamlit secrets.")
     st.stop()
 
-# --- ASSETS ---
+# --- CONSTANTES ---
 BACKGROUND_IMAGE_URL = "https://media.discordapp.net/attachments/1065027576572518490/1179469739770630164/face_tiled.jpg?ex=657a90f2&is=65681bf2&hm=123"
 DD_VERSION = "13.24.1"
 
-# --- QUEUE MAP ---
 QUEUE_MAP = {
     "Ranked Solo/Duo": 420,
     "Ranked Flex": 440,
@@ -31,15 +30,91 @@ QUEUE_MAP = {
     "Arena": 1700
 }
 
-# --- AUTO-UPDATE VERSION ---
-@st.cache_data(ttl=3600)
+ROLE_ICONS = {"TOP": "🛡️ TOP", "JUNGLE": "🌲 JUNGLE", "MIDDLE": "🧙 MID", "BOTTOM": "🏹 ADC", "UTILITY": "🩹 SUPP", "UNKNOWN": "❓ FILL"}
+
+# --- 2. FONCTIONS DE CALCUL (DÉFINIES EN PREMIER !!!) ---
+
 def get_dd_version():
     try: return requests.get("https://ddragon.leagueoflegends.com/api/versions.json").json()[0]
     except: return "14.23.1"
 
 DD_VERSION = get_dd_version()
 
-# --- TRADUCTIONS ---
+def get_champ_url(champ_name):
+    if not champ_name: return "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Poro_0.jpg"
+    clean = champ_name.replace(" ", "").replace("'", "").replace(".", "")
+    mapping = {"wukong": "MonkeyKing", "renataglasc": "Renata", "nunu&willump": "Nunu", "kogmaw": "KogMaw", "reksai": "RekSai", "drmundo": "DrMundo", "belveth": "Belveth"}
+    return f"https://ddragon.leagueoflegends.com/cdn/{DD_VERSION}/img/champion/{mapping.get(clean.lower(), clean)}.png"
+
+def safe_format(text, target, duo):
+    try: return text.format(target=target, duo=duo)
+    except: return text
+
+def analyze_qualities(stats, role, lang_dict):
+    """
+    Analyse les stats pour donner Qualité et Défaut.
+    Prend en compte le rôle pour être juste.
+    """
+    qualities = []
+    
+    # --- QUALITÉS ---
+    if stats['kda'] > 3.5: qualities.append(lang_dict.get("q_surv", "High KDA"))
+    if stats['obj'] > 5000: qualities.append(lang_dict.get("q_obj", "Obj Dmg"))
+    if stats['dpm'] > 750: qualities.append(lang_dict.get("q_dmg", "High Dmg"))
+    if stats['vis'] > 35: qualities.append(lang_dict.get("q_vis", "Vision"))
+    
+    # --- DÉFAUTS (CONTEXTE) ---
+    # On cherche la stat la plus faible par rapport à la moyenne attendue du rôle
+    scores = {
+        'kda': stats['kda'] / 3.0,
+        'vis': stats['vis'] / 25.0,
+    }
+    
+    # Logique spécifique par rôle
+    if role == "UTILITY": # Support
+        # On ne juge PAS le farm ni les dégâts
+        pass 
+    elif role == "JUNGLE": # Jungle
+        scores['obj'] = stats['obj'] / 5000.0 # Doit faire beaucoup d'obj
+    else: # Laners
+        scores['dpm'] = stats['dpm'] / 600.0
+        scores['gold'] = stats['gold'] / 400.0
+        scores['obj'] = stats['obj'] / 2000.0
+
+    # Trouver le pire score
+    if scores:
+        worst_stat = min(scores, key=scores.get)
+    else:
+        worst_stat = 'kda'
+
+    flaws_map = {
+        'kda': lang_dict.get("f_feed", "Feed"),
+        'dpm': lang_dict.get("f_afk", "Low Dmg"),
+        'vis': lang_dict.get("f_blind", "No Vis"),
+        'obj': lang_dict.get("f_no_obj", "No Obj"),
+        'gold': lang_dict.get("f_farm", "Low Farm")
+    }
+    
+    flaw = flaws_map.get(worst_stat, "Ok")
+    
+    # Qualité par défaut
+    q = qualities[0] if qualities else lang_dict.get("q_bal", "Balanced")
+    
+    # Bonus titre Support
+    if role == "UTILITY" and q == lang_dict.get("q_bal"): 
+        q = lang_dict.get("q_supp", "Support")
+    
+    return q, flaw
+
+def render_stat_row(label, val, diff, unit=""):
+    if diff > 0: diff_html = f"<span class='stat-diff pos'>+{round(diff, 1)}{unit}</span>"
+    elif diff < 0: diff_html = f"<span class='stat-diff neg'>{round(diff, 1)}{unit}</span>"
+    else: diff_html = f"<span class='stat-diff neutral'>=</span>"
+    val_display = f"{val}{unit}"
+    if isinstance(val, int) and val > 1000: val_display = f"{val/1000:.1f}k"
+    st.markdown(f"""<div class="stat-row"><div class="stat-label">{label}</div><div style="display:flex; align-items:center;"><div class="stat-value">{val_display}</div>{diff_html}</div></div>""", unsafe_allow_html=True)
+
+# --- 3. TRADUCTIONS ---
 TRANSLATIONS = {
     "FR": {
         "title": "LoL Duo Analyst", "btn_scan": "LANCER L'ANALYSE", "placeholder": "Exemple: Kameto#EUW", "label_id": "Riot ID", "dpm_btn": "🔗 Voir sur dpm.lol",
@@ -53,7 +128,7 @@ TRANSLATIONS = {
         "loading": "Analyse tactique en cours...",
         "role_hyper": "CARRY", "role_lead": "MENEUR", "role_equal": "PARTENAIRE", "role_supp": "SOUTIEN", "role_gap": "ROOKIE",
         "q_surv": "Injouable (KDA)", "q_dmg": "Gros Dégâts", "q_obj": "Destructeur", "q_vis": "Contrôle Map", "q_bal": "Polyvalent", "q_supp": "Excellent Support",
-        "f_feed": "Meurt trop souvent", "f_afk": "Dégâts faibles", "f_no_obj": "Ignore objectifs", "f_blind": "Vision faible", "f_farm": "Farm faible", "f_ok": "Solide",
+        "f_feed": "Meurt trop", "f_afk": "Dégâts faibles", "f_no_obj": "Ignore objectifs", "f_blind": "Vision faible", "f_farm": "Farm faible", "f_ok": "Solide",
         "stats": "STATS", "combat": "COMBAT", "eco": "ÉCONOMIE", "vision": "VISION & MAP",
         "error_no_games": "Aucune partie trouvée.", "error_hint": "Vérifie la région ou le mode de jeu."
     },
@@ -75,14 +150,9 @@ TRANSLATIONS = {
     "ES": {"title":"Analista LoL","btn_scan":"ANALIZAR","placeholder":"Ejemplo: Ibai#EUW","label_id":"Riot ID","dpm_btn":"Ver dpm.lol","v_hyper":"MVP TOTAL","s_hyper":"Domina a {duo}","v_tactician":"ESTRATEGA","s_tactician":"Macro para {duo}","v_fighter":"GLADIADOR","s_fighter":"Daño","v_solid":"DUO SOLIDO","s_solid":"Sinergia con {duo}","v_passive":"PASIVO","s_passive":"Seguro","v_struggle":"DIFICULTAD","s_struggle":"Sufre vs {duo}","solo":"SOLO","solo_sub":"Sin duo","loading":"Cargando...","role_hyper":"CARRY","role_lead":"LIDER","role_equal":"SOCIO","role_supp":"APOYO","role_gap":"NOVATO","q_surv":"Inmortal","q_dmg":"Daño","q_obj":"Torres","q_vis":"Vision","q_bal":"Balance","q_supp":"Support","f_feed":"Muere","f_afk":"Poco daño","f_no_obj":"Sin obj","f_blind":"Ciego","f_farm":"Farm","f_ok":"Bien","stats":"STATS","combat":"COMBATE","eco":"ECONOMIA","vision":"VISION","error_no_games":"Error","error_hint":"Region?"},
     "KR": {"title":"LoL 듀오 분석","btn_scan":"분석 시작","placeholder":"예: Hide on bush#KR1","label_id":"Riot ID","dpm_btn":"dpm.lol 확인","v_hyper":"하드 캐리","s_hyper":"{target} > {duo}","v_tactician":"전략가","s_tactician":"운영","v_fighter":"전투광","s_fighter":"딜","v_solid":"완벽 듀오","s_solid":"{target} & {duo}","v_passive":"버스","s_passive":"안전","v_struggle":"고전","s_struggle":"역부족","solo":"솔로","solo_sub":"듀오 없음","loading":"분석 중...","role_hyper":"캐리","role_lead":"리더","role_equal":"파트너","role_supp":"서포터","role_gap":"신입","q_surv":"생존","q_dmg":"딜량","q_obj":"철거","q_vis":"시야","q_bal":"밸런스","q_supp":"서폿","f_feed":"데스","f_afk":"딜부족","f_no_obj":"운영부족","f_blind":"시야부족","f_farm":"CS","f_ok":"굿","stats":"통계","combat":"전투","eco":"경제","vision":"시야","error_no_games":"없음","error_hint":"지역?"}
 }
-
-# --- MAP DRAPEAUX ---
 LANG_MAP = {"🇫🇷 FR": "FR", "🇺🇸 EN": "EN", "🇪🇸 ES": "ES", "🇰🇷 KR": "KR"}
 
-# --- ROLES MAPPING ---
-ROLE_ICONS = {"TOP": "🛡️ TOP", "JUNGLE": "🌲 JUNGLE", "MIDDLE": "🧙 MID", "BOTTOM": "🏹 ADC", "UTILITY": "🩹 SUPP", "UNKNOWN": "❓ FILL"}
-
-# --- CSS STYLES ---
+# --- 4. STYLES CSS ---
 st.markdown(
     f"""
     <style>
@@ -129,7 +199,7 @@ st.markdown(
     """, unsafe_allow_html=True
 )
 
-# --- HEADER & LANGUAGE ---
+# --- 5. INTERFACE PRINCIPALE ---
 c_title, c_lang = st.columns([5, 1])
 with c_lang:
     selected_label = st.selectbox("Lang", list(LANG_MAP.keys()), label_visibility="collapsed")
@@ -139,7 +209,6 @@ T = TRANSLATIONS.get(lang_code, TRANSLATIONS["EN"])
 
 st.markdown(f'<div class="main-title">{T["title"]}</div>', unsafe_allow_html=True)
 
-# --- FORMULAIRE ---
 with st.form("search_form"):
     c1, c2, c3 = st.columns([3, 1, 1], gap="small")
     with c1:
@@ -154,67 +223,24 @@ with st.form("search_form"):
     st.markdown("<br>", unsafe_allow_html=True)
     submitted = st.form_submit_button(T["btn_scan"])
 
-# --- FONCTIONS ---
-def get_champ_url(champ_name):
-    if not champ_name: return "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Poro_0.jpg"
-    clean = champ_name.replace(" ", "").replace("'", "").replace(".", "")
-    mapping = {"wukong": "MonkeyKing", "renataglasc": "Renata", "nunu&willump": "Nunu", "kogmaw": "KogMaw", "reksai": "RekSai", "drmundo": "DrMundo", "belveth": "Belveth"}
-    return f"https://ddragon.leagueoflegends.com/cdn/{DD_VERSION}/img/champion/{mapping.get(clean.lower(), clean)}.png"
-
-def safe_format(text, target, duo):
-    try: return text.format(target=target, duo=duo)
-    except: return text
-
-# --- NOM CORRIGÉ : analyze_qualities ---
-def analyze_qualities(stats, role, lang_dict):
-    qualities, flaws = [], []
-    
-    if stats['kda'] > 3.5: qualities.append(lang_dict.get("q_surv", "High KDA"))
-    if stats['obj'] > 5000: qualities.append(lang_dict.get("q_obj", "Obj Dmg"))
-    if stats['dpm'] > 750: qualities.append(lang_dict.get("q_dmg", "High Dmg"))
-    if stats['vis'] > 35: qualities.append(lang_dict.get("q_vis", "Vision"))
-    
-    flaw = lang_dict.get("f_ok", "Solid")
-    if role == "UTILITY":
-        if stats['vis'] < 20: flaw = lang_dict.get("f_blind", "No Vis")
-        elif stats['kda'] < 2.0: flaw = lang_dict.get("f_feed", "Feed")
-    elif role == "JUNGLE":
-        if stats['obj'] < 1000: flaw = lang_dict.get("f_no_obj", "No Obj")
-        elif stats['kda'] < 2.0: flaw = lang_dict.get("f_feed", "Feed")
-    else:
-        if stats['dpm'] < 300: flaw = lang_dict.get("f_afk", "Low Dmg")
-        elif stats['kda'] < 1.8: flaw = lang_dict.get("f_feed", "Feed")
-        elif stats['gold'] < 300: flaw = lang_dict.get("f_farm", "Low Farm")
-
-    q = qualities[0] if qualities else lang_dict.get("q_bal", "Balanced")
-    if role == "UTILITY" and q == lang_dict.get("q_bal"): q = lang_dict.get("q_supp", "Support")
-    return q, flaw
-
-def render_stat_row(label, val, diff, unit=""):
-    if diff > 0: diff_html = f"<span class='stat-diff pos'>+{round(diff, 1)}{unit}</span>"
-    elif diff < 0: diff_html = f"<span class='stat-diff neg'>{round(diff, 1)}{unit}</span>"
-    else: diff_html = f"<span class='stat-diff neutral'>=</span>"
-    val_display = f"{val}{unit}"
-    if isinstance(val, int) and val > 1000: val_display = f"{val/1000:.1f}k"
-    st.markdown(f"""<div class="stat-row"><div class="stat-label">{label}</div><div style="display:flex; align-items:center;"><div class="stat-value">{val_display}</div>{diff_html}</div></div>""", unsafe_allow_html=True)
-
-# --- API ---
-@st.cache_data(ttl=600)
-def get_puuid_from_api(name, tag, region, api_key):
-    url = f"https://{region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{name}/{tag}?api_key={api_key}"
-    return requests.get(url)
-
-@st.cache_data(ttl=120)
-def get_matches_from_api(puuid, region, api_key, queue_id):
-    url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue={queue_id}&start=0&count=20&api_key={api_key}"
-    return requests.get(url)
-
-def fetch_match_detail(match_id, region, api_key):
-    url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/{match_id}?api_key={api_key}"
-    return requests.get(url).json()
-
-# --- APP ---
+# --- 6. LOGIQUE DE L'APP ---
 if submitted:
+    
+    # CACHED API FUNCTIONS
+    @st.cache_data(ttl=600)
+    def get_puuid_from_api(name, tag, region, api_key):
+        url = f"https://{region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{name}/{tag}?api_key={api_key}"
+        return requests.get(url)
+
+    @st.cache_data(ttl=120)
+    def get_matches_from_api(puuid, region, api_key, queue_id):
+        url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue={queue_id}&start=0&count=20&api_key={api_key}"
+        return requests.get(url)
+    
+    def fetch_match_detail(match_id, region, api_key):
+        url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/{match_id}?api_key={api_key}"
+        return requests.get(url).json()
+
     def get_regions(region_code):
         if region_code in ["EUW1", "EUN1", "TR1", "RU"]: return "europe"
         elif region_code == "KR": return "asia"
@@ -297,6 +323,7 @@ if submitted:
                                             d['my_stats_vs'][k] += my_s[k]
                     except: pass 
 
+            # VERDICT
             st.markdown("<div id='result'></div>", unsafe_allow_html=True)
             best_duo = None
             max_g = 0
@@ -309,10 +336,11 @@ if submitted:
                 g = best_duo['games']
                 duo_name = best_duo['name']
                 
-                try: main_role_me = Counter(best_duo['my_roles']).most_common(1)[0][0]
-                except: main_role_me = "UNKNOWN"
-                try: main_role_duo = Counter(best_duo['roles']).most_common(1)[0][0]
-                except: main_role_duo = "UNKNOWN"
+                # Init Roles
+                main_role_me = "UNKNOWN"
+                main_role_duo = "UNKNOWN"
+                if best_duo['my_roles']: main_role_me = Counter(best_duo['my_roles']).most_common(1)[0][0]
+                if best_duo['roles']: main_role_duo = Counter(best_duo['roles']).most_common(1)[0][0]
                 
                 def avg_f(d, key): return round(d[key] / g, 2)
                 def avg(d, key): return int(d[key] / g)
@@ -320,6 +348,7 @@ if submitted:
                 s_me = best_duo['my_stats_vs']
                 s_duo = best_duo['stats']
                 
+                # --- SCORE ---
                 def calc_score(s, role):
                     kda = s['kda'] / g
                     dpm = s['dpm'] / g
@@ -377,7 +406,11 @@ if submitted:
 
                 col_left, col_right = st.columns(2, gap="large")
                 
-                # APPEL CORRECT
+                # STATS
+                stats_me = {'kda': avg_f(s_me, 'kda'), 'dpm': avg(s_me, 'dpm'), 'vis': avg(s_me, 'vis'), 'obj': avg(s_me, 'obj'), 'gold': avg(s_me, 'gold')}
+                stats_duo = {'kda': avg_f(s_duo, 'kda'), 'dpm': avg(s_duo, 'dpm'), 'vis': avg(s_duo, 'vis'), 'obj': avg(s_duo, 'obj'), 'gold': avg(s_duo, 'gold')}
+                
+                # --- APPEL CORRECT ---
                 qual, flaw = analyze_qualities(stats_me, main_role_me, T)
                 qual_d, flaw_d = analyze_qualities(stats_duo, main_role_duo, T)
 
@@ -391,11 +424,15 @@ if submitted:
                     for ch in top_champs: html_champs += f"<img src='{get_champ_url(ch)}' class='champ-img'>"
                     html_champs += "</div>"
                     st.markdown(html_champs, unsafe_allow_html=True)
+                    st.markdown(f"<div class='stat-section-title'>{T['combat']}</div>", unsafe_allow_html=True)
                     render_stat_row("KDA", stats_me['kda'], stats_me['kda'] - stats_duo['kda'])
                     render_stat_row("DPM", stats_me['dpm'], stats_me['dpm'] - stats_duo['dpm'])
+                    st.markdown(f"<div class='stat-section-title'>{T['eco']} / {T['vision']}</div>", unsafe_allow_html=True)
                     render_stat_row("GOLD", int(avg(s_me, 'gold')), int(avg(s_me, 'gold')) - int(avg(s_duo, 'gold')))
                     render_stat_row("VISION", stats_me['vis'], stats_me['vis'] - stats_duo['vis'])
+                    st.markdown(f"<div class='stat-section-title'>OBJECTIVES</div>", unsafe_allow_html=True)
                     render_stat_row("OBJ DMG", stats_me['obj'], stats_me['obj'] - stats_duo['obj'])
+                    render_stat_row("TOWERS", avg_f(s_me, 'towers'), avg_f(s_me, 'towers') - avg_f(s_duo, 'towers'))
                     st.markdown("</div>", unsafe_allow_html=True)
 
                 with col_right:
@@ -408,11 +445,15 @@ if submitted:
                     for ch in top_champs_d: html_champs_d += f"<img src='{get_champ_url(ch)}' class='champ-img'>"
                     html_champs_d += "</div>"
                     st.markdown(html_champs_d, unsafe_allow_html=True)
+                    st.markdown(f"<div class='stat-section-title'>{T['combat']}</div>", unsafe_allow_html=True)
                     render_stat_row("KDA", stats_duo['kda'], stats_duo['kda'] - stats_me['kda'])
                     render_stat_row("DPM", stats_duo['dpm'], stats_duo['dpm'] - stats_me['dpm'])
+                    st.markdown(f"<div class='stat-section-title'>{T['eco']} / {T['vision']}</div>", unsafe_allow_html=True)
                     render_stat_row("GOLD", int(avg(s_duo, 'gold')), int(avg(s_duo, 'gold')) - int(avg(s_me, 'gold')))
                     render_stat_row("VISION", stats_duo['vis'], stats_duo['vis'] - stats_me['vis'])
+                    st.markdown(f"<div class='stat-section-title'>OBJECTIVES</div>", unsafe_allow_html=True)
                     render_stat_row("OBJ DMG", stats_duo['obj'], stats_duo['obj'] - stats_me['obj'])
+                    render_stat_row("TOWERS", avg_f(s_duo, 'towers'), avg_f(s_duo, 'towers') - avg_f(s_me, 'towers'))
                     st.markdown("</div>", unsafe_allow_html=True)
 
             else:
