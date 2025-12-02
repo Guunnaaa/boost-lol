@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import requests
 import time
 from urllib.parse import quote
@@ -6,7 +7,7 @@ from collections import Counter
 import concurrent.futures
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V39", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V40", layout="wide")
 
 # --- API KEY ---
 try:
@@ -27,71 +28,58 @@ def get_dd_version():
 
 DD_VERSION = get_dd_version()
 
-# --- TRADUCTIONS ---
+# --- TRADUCTIONS (Avec Noms Duo intégrés) ---
 TRANSLATIONS = {
     "FR": {
         "title": "LoL Duo Analyst",
         "btn_scan": "LANCER L'ANALYSE",
-        "placeholder": "Exemple: Kameto#EUW", # Changé pour Kameto
+        "placeholder": "Exemple: Kameto#EUW",
         "label_id": "Riot ID",
         "dpm_btn": "🔗 Voir sur dpm.lol",
         
-        "v_hyper": "MVP TOTAL", "s_hyper": "{target} domine la faille (Combat & Objectifs)",
-        "v_tactician": "MASTERMIND", "s_tactician": "{target} gagne grâce à la macro",
+        # Phrases Verdict (Incluant le nom du duo)
+        "v_hyper": "MVP TOTAL", "s_hyper": "{target} porte {duo} sur ses épaules (1v9)",
+        "v_tactician": "MASTERMIND", "s_tactician": "{target} gagne la game pour {duo} grâce à la macro",
         "v_fighter": "GLADIATEUR", "s_fighter": "{target} fait les dégâts, {duo} prend les objectifs",
-        "v_solid": "DUO FUSIONNEL", "s_solid": "Contribution parfaitement équilibrée",
-        "v_passive": "EN RETRAIT", "s_passive": "{target} joue safe, {duo} mène le jeu",
-        "v_struggle": "EN DIFFICULTÉ", "s_struggle": "{target} peine à suivre le rythme de {duo}",
+        "v_solid": "DUO FUSIONNEL", "s_solid": "Synergie parfaite entre {target} et {duo}",
+        "v_passive": "EN RETRAIT", "s_passive": "{target} joue safe et laisse {duo} mener le jeu",
+        "v_struggle": "EN DIFFICULTÉ", "s_struggle": "{target} peine à suivre le rythme imposé par {duo}",
 
-        "solo": "LOUP SOLITAIRE", "solo_sub": "Aucun duo récurrent sur 20 parties.",
+        "solo": "LOUP SOLITAIRE", "solo_sub": "Aucun duo récurrent détecté sur 20 parties.",
         "loading": "Analyse tactique en cours...",
         
         "role_hyper": "CARRY", "role_lead": "MENEUR", "role_equal": "PARTENAIRE", "role_supp": "SOUTIEN", "role_gap": "ROOKIE",
-        
         "q_surv": "Injouable (KDA)", "q_dmg": "Gros Dégâts", "q_obj": "Destructeur", "q_vis": "Contrôle Map", "q_bal": "Polyvalent",
         "f_feed": "Meurt trop", "f_afk": "Dégâts faibles", "f_no_obj": "Ignore objectifs", "f_blind": "Vision faible", "f_farm": "Farm faible", "f_ok": "Solide",
         
-        "stats": "PERF DE", "combat": "COMBAT", "eco": "ÉCONOMIE", "vision": "VISION & MAP",
+        "stats": "STATS", "combat": "COMBAT", "eco": "ÉCONOMIE", "vision": "VISION & MAP",
         "error_no_games": "Aucune partie trouvée.", "error_hint": "Vérifie la région."
     },
     "EN": {
         "title": "LoL Duo Analyst", "btn_scan": "START ANALYSIS", "placeholder": "Example: Faker#KR1", "label_id": "Riot ID", "dpm_btn": "🔗 Check dpm.lol",
-        "v_hyper": "TOTAL MVP", "s_hyper": "{target} dominates the rift",
-        "v_tactician": "MASTERMIND", "s_tactician": "{target} wins through macro",
+        "v_hyper": "TOTAL MVP", "s_hyper": "{target} is hard carrying {duo}",
+        "v_tactician": "MASTERMIND", "s_tactician": "{target} wins for {duo} via macro",
         "v_fighter": "GLADIATOR", "s_fighter": "{target} deals dmg, {duo} takes objs",
-        "v_solid": "PERFECT DUO", "s_solid": "Balanced contribution",
+        "v_solid": "PERFECT DUO", "s_solid": "Perfect synergy between {target} and {duo}",
         "v_passive": "PASSIVE", "s_passive": "{target} plays safe, {duo} leads",
         "v_struggle": "STRUGGLING", "s_struggle": "{target} can't keep up with {duo}",
         "solo": "SOLO PLAYER", "solo_sub": "No recurring partner found.",
-        "loading": "Analyzing roles & performance...",
-        "role_hyper": "CARRY", "role_lead": "LEADER", "role_equal": "PARTNER", "role_supp": "SUPPORT", "role_gap": "ROOKIE",
+        "loading": "Analyzing...", "role_hyper": "CARRY", "role_lead": "LEADER", "role_equal": "PARTNER", "role_supp": "SUPPORT", "role_gap": "ROOKIE",
         "q_surv": "Unkillable", "q_dmg": "Heavy Hitter", "q_obj": "Destroyer", "q_vis": "Map Control", "q_bal": "Balanced",
-        "f_feed": "Too fragile", "f_afk": "Low Dmg", "f_no_obj": "Ignores Objs", "f_blind": "Low Vision", "f_farm": "Low Farm", "f_ok": "Solid",
-        "stats": "STATS FOR", "combat": "COMBAT", "eco": "ECONOMY", "vision": "VISION",
-        "error_no_games": "No games found.", "error_hint": "Check Region."
+        "f_feed": "Too fragile", "f_afk": "Low Dmg", "f_no_obj": "No Objs", "f_blind": "Blind", "f_farm": "Low Farm", "f_ok": "Solid",
+        "stats": "STATS", "combat": "COMBAT", "eco": "ECONOMY", "vision": "VISION", "error_no_games": "No games found.", "error_hint": "Check Region."
     },
-    "ES": {"title":"Analista LoL","btn_scan":"ANALIZAR","placeholder":"Ejemplo: Ibai#EUW","label_id":"Riot ID","dpm_btn":"Ver dpm.lol","v_hyper":"MVP TOTAL","s_hyper":"Domina","v_tactician":"ESTRATEGA","s_tactician":"Macro","v_fighter":"GLADIADOR","s_fighter":"Daño","v_solid":"DUO SOLIDO","s_solid":"Equilibrio","v_passive":"PASIVO","s_passive":"Seguro","v_struggle":"DIFICULTAD","s_struggle":"Sufre","solo":"SOLO","solo_sub":"Sin duo","loading":"Cargando...","role_hyper":"CARRY","role_lead":"LIDER","role_equal":"SOCIO","role_supp":"APOYO","role_gap":"NOVATO","q_surv":"Inmortal","q_dmg":"Daño","q_obj":"Torres","q_vis":"Vision","q_bal":"Balance","f_feed":"Muere","f_afk":"Poco daño","f_no_obj":"Sin obj","f_blind":"Ciego","f_farm":"Farm","f_ok":"Bien","stats":"STATS","combat":"COMBATE","eco":"ECONOMIA","vision":"VISION","error_no_games":"Error","error_hint":"Region?"},
-    "KR": {"title":"LoL 듀오 분석","btn_scan":"분석 시작","placeholder":"예: Hide on bush#KR1","label_id":"Riot ID","dpm_btn":"dpm.lol 확인","v_hyper":"하드 캐리","s_hyper":"독무대","v_tactician":"전략가","s_tactician":"운영","v_fighter":"전투광","s_fighter":"딜","v_solid":"완벽 듀오","s_solid":"동등","v_passive":"버스","s_passive":"안전","v_struggle":"고전","s_struggle":"역부족","solo":"솔로","solo_sub":"듀오 없음","loading":"분석 중...","role_hyper":"캐리","role_lead":"리더","role_equal":"파트너","role_supp":"서포터","role_gap":"신입","q_surv":"생존","q_dmg":"딜량","q_obj":"철거","q_vis":"시야","q_bal":"밸런스","f_feed":"데스","f_afk":"딜부족","f_no_obj":"운영부족","f_blind":"시야부족","f_farm":"CS","f_ok":"굿","stats":"통계","combat":"전투","eco":"경제","vision":"시야","error_no_games":"없음","error_hint":"지역?"}
+    "ES": {"title":"Analista LoL","btn_scan":"ANALIZAR","placeholder":"Ejemplo: Ibai#EUW","label_id":"Riot ID","dpm_btn":"Ver dpm.lol","v_hyper":"MVP TOTAL","s_hyper":"Domina a {duo}","v_tactician":"ESTRATEGA","s_tactician":"Macro","v_fighter":"GLADIADOR","s_fighter":"Daño","v_solid":"DUO SOLIDO","s_solid":"Sinergia con {duo}","v_passive":"PASIVO","s_passive":"Seguro","v_struggle":"DIFICULTAD","s_struggle":"Sufre vs {duo}","solo":"SOLO","solo_sub":"Sin duo","loading":"Cargando...","role_hyper":"CARRY","role_lead":"LIDER","role_equal":"SOCIO","role_supp":"APOYO","role_gap":"NOVATO","q_surv":"Inmortal","q_dmg":"Daño","q_obj":"Torres","q_vis":"Vision","q_bal":"Balance","f_feed":"Muere","f_afk":"Poco daño","f_no_obj":"Sin obj","f_blind":"Ciego","f_farm":"Farm","f_ok":"Bien","stats":"STATS","combat":"COMBATE","eco":"ECONOMIA","vision":"VISION","error_no_games":"Error","error_hint":"Region?"},
+    "KR": {"title":"LoL 듀오 분석","btn_scan":"분석 시작","placeholder":"예: Hide on bush#KR1","label_id":"Riot ID","dpm_btn":"dpm.lol 확인","v_hyper":"하드 캐리","s_hyper":"{target} > {duo}","v_tactician":"전략가","s_tactician":"운영","v_fighter":"전투광","s_fighter":"딜","v_solid":"완벽 듀오","s_solid":"{target} & {duo}","v_passive":"버스","s_passive":"안전","v_struggle":"고전","s_struggle":"역부족","solo":"솔로","solo_sub":"듀오 없음","loading":"분석 중...","role_hyper":"캐리","role_lead":"리더","role_equal":"파트너","role_supp":"서포터","role_gap":"신입","q_surv":"생존","q_dmg":"딜량","q_obj":"철거","q_vis":"시야","q_bal":"밸런스","f_feed":"데스","f_afk":"딜부족","f_no_obj":"운영부족","f_blind":"시야부족","f_farm":"CS","f_ok":"굿","stats":"통계","combat":"전투","eco":"경제","vision":"시야","error_no_games":"없음","error_hint":"지역?"}
 }
 
 # --- MAP DRAPEAUX ---
-LANG_MAP = {
-    "🇫🇷 FR": "FR",
-    "🇺🇸 EN": "EN",
-    "🇪🇸 ES": "ES",
-    "🇰🇷 KR": "KR"
-}
+LANG_MAP = {"🇫🇷 FR": "FR", "🇺🇸 EN": "EN", "🇪🇸 ES": "ES", "🇰🇷 KR": "KR"}
 
 # --- ROLES MAPPING ---
-ROLE_ICONS = {
-    "TOP": "🛡️ TOP",
-    "JUNGLE": "🌲 JUNGLE",
-    "MIDDLE": "🧙 MID",
-    "BOTTOM": "🏹 ADC",
-    "UTILITY": "🩹 SUPP"
-}
+ROLE_ICONS = {"TOP": "🛡️ TOP", "JUNGLE": "🌲 JUNGLE", "MIDDLE": "🧙 MID", "BOTTOM": "🏹 ADC", "UTILITY": "🩹 SUPP"}
 
-# --- CSS STYLES ---
+# --- CSS STYLES (MOBILE OPTIMIZED) ---
 st.markdown(
     f"""
     <style>
@@ -99,7 +87,6 @@ st.markdown(
     
     html, body, [class*="css"] {{ font-family: 'Inter', sans-serif; }}
     
-    /* Support Emoji Fonts */
     @font-face {{ font-family: 'Noto Color Emoji'; src: local('Noto Color Emoji'), default; }}
     
     .stApp {{
@@ -108,20 +95,21 @@ st.markdown(
     }}
     
     .block-container {{
-        max-width: 1400px !important; padding: 2rem !important; margin: auto !important;
+        max-width: 1400px !important; padding: 1rem !important; /* Moins de padding sur mobile */
+        margin: auto !important;
         background: rgba(12, 12, 12, 0.96); backdrop-filter: blur(20px);
         border-radius: 0px; border-bottom: 2px solid #333; box-shadow: 0 20px 50px rgba(0,0,0,0.9);
     }}
     
-    /* TITRE HEXTECH BLUE */
+    /* TITRE ADAPTATIF */
     .main-title {{
-        font-size: 60px; font-weight: 900; text-align: center; margin-bottom: 20px;
-        text-transform: uppercase; letter-spacing: -2px;
+        font-size: 40px; font-weight: 900; text-align: center; margin-bottom: 20px;
+        text-transform: uppercase; letter-spacing: -1px;
         background: linear-gradient(90deg, #00c6ff, #0072ff);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         filter: drop-shadow(0 0 8px rgba(0, 114, 255, 0.4));
     }}
+    @media (min-width: 800px) {{ .main-title {{ font-size: 60px; }} }}
     
     .dpm-button-small {{
         display: flex; align-items: center; justify-content: center;
@@ -134,11 +122,14 @@ st.markdown(
     .input-row {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }}
     .input-label {{ font-size: 14px; font-weight: 700; color: #ddd; text-transform: uppercase; }}
 
-    .player-panel {{ background: rgba(255, 255, 255, 0.03); border-radius: 16px; padding: 20px; height: 100%; border: 1px solid rgba(255,255,255,0.05); }}
-    .player-name {{ font-size: 28px; font-weight: 900; color: white; text-align: center; margin-bottom: 5px; }}
-    
-    .role-badge {{ font-size: 13px; font-weight: 700; color: #aaa; text-align: center; margin-bottom: 15px; letter-spacing: 1px; opacity: 0.8; }}
-    
+    /* HIDE FORM HINT */
+    .stForm > div[data-testid="stFormEnterToSubmit"] {{ display: none; }}
+
+    .player-panel {{ background: rgba(255, 255, 255, 0.03); border-radius: 16px; padding: 15px; height: 100%; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 10px; }}
+    .player-name {{ font-size: 24px; font-weight: 900; color: white; text-align: center; margin-bottom: 2px; }}
+    @media (min-width: 800px) {{ .player-name {{ font-size: 32px; }} }}
+
+    .role-badge {{ font-size: 12px; font-weight: 700; color: #aaa; text-align: center; margin-bottom: 10px; letter-spacing: 1px; opacity: 0.8; }}
     .player-role {{ font-size: 14px; font-weight: 700; text-align: center; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; padding: 5px; border-radius: 4px; background: rgba(255,255,255,0.05); }}
     
     .color-gold {{ color: #FFD700; border-color: #FFD700; }}
@@ -149,20 +140,29 @@ st.markdown(
 
     .stat-row {{ display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }}
     .stat-label {{ font-size: 12px; color: #888; font-weight: 600; }}
-    .stat-value {{ font-size: 18px; color: white; font-weight: 700; }}
+    .stat-value {{ font-size: 16px; color: white; font-weight: 700; }}
     .stat-diff {{ font-size: 11px; font-weight: 600; margin-left: 6px; padding: 2px 4px; border-radius: 3px; }}
     .pos {{ color: #00ff99; background: rgba(0,255,153,0.1); }} .neg {{ color: #ff4444; background: rgba(255,68,68,0.1); }} .neutral {{ color: #666; }}
     
-    .feedback-row {{ display: flex; gap: 8px; justify-content: center; margin-bottom: 15px; }}
-    .fb-box {{ padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; }}
+    .feedback-row {{ display: flex; gap: 5px; justify-content: center; margin-bottom: 15px; flex-wrap: wrap; }}
+    .fb-box {{ padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; white-space: nowrap; }}
     .fb-good {{ background: rgba(0, 255, 153, 0.1); color: #00ff99; border: 1px solid #00ff99; }}
     .fb-bad {{ background: rgba(255, 68, 68, 0.1); color: #ff6666; border: 1px solid #ff4444; }}
     
-    .verdict-banner {{ text-align: center; padding: 30px; margin-bottom: 40px; border-radius: 16px; background: rgba(0,0,0,0.4); border: 1px solid #333; }}
-    .champ-img {{ width: 50px; height: 50px; border-radius: 50%; border: 2px solid #444; margin: 0 4px; }}
+    .verdict-banner {{ text-align: center; padding: 20px; margin-bottom: 30px; border-radius: 16px; background: rgba(0,0,0,0.4); border: 1px solid #333; }}
     
-    .stButton > button {{ width: 100%; height: 50px; background: linear-gradient(90deg, #ff0055, #ff2222); color: white; font-size: 18px; font-weight: 700; border: none; border-radius: 8px; text-transform: uppercase; }}
-    .stButton > button:hover {{ transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,0,85,0.3); }}
+    .champ-img {{ width: 45px; height: 45px; border-radius: 50%; border: 2px solid #444; margin: 0 2px; }}
+    
+    /* MOBILE BUTTON FIX */
+    .stButton > button {{ 
+        width: 100%; height: 55px; 
+        background: linear-gradient(90deg, #ff0055, #ff2222) !important;
+        color: white !important; font-size: 18px; font-weight: 800; border: none; border-radius: 8px; 
+        text-transform: uppercase; letter-spacing: 1px;
+        -webkit-appearance: none; /* iOS Fix */
+        appearance: none;
+    }}
+    .stButton > button:active {{ transform: scale(0.98); background: #ff0055 !important; }}
     
     p, label {{ color: #eee !important; font-weight: 600; font-size: 13px; }}
     </style>
@@ -172,8 +172,8 @@ st.markdown(
 # --- HEADER & LANGUAGE ---
 c_title, c_lang = st.columns([5, 1])
 with c_lang:
-    sel_label = st.selectbox("Lang", list(LANG_MAP.keys()), label_visibility="collapsed")
-    lang_code = LANG_MAP[sel_label]
+    selected_label = st.selectbox("Lang", list(LANG_MAP.keys()), label_visibility="collapsed")
+    lang_code = LANG_MAP[selected_label]
 
 T = TRANSLATIONS.get(lang_code, TRANSLATIONS["EN"])
 
@@ -181,7 +181,7 @@ st.markdown(f'<div class="main-title">{T["title"]}</div>', unsafe_allow_html=Tru
 
 # --- FORMULAIRE ---
 with st.form("search_form"):
-    c1, c2, c3 = st.columns([3, 1, 1], gap="medium")
+    c1, c2, c3 = st.columns([3, 1, 1], gap="small")
     
     with c1:
         st.markdown(f"""
@@ -195,7 +195,6 @@ with st.form("search_form"):
         region_select = st.selectbox("Region", ["EUW1", "NA1", "KR", "EUN1", "TR1"], label_visibility="collapsed")
     with c3:
         st.markdown(f"<div style='margin-bottom:5px'><span class='input-label'>Mode</span></div>", unsafe_allow_html=True)
-        # QUEUE_MAP est implicite ici pour simplifier : 420 (Solo) / 440 (Flex)
         queue_type = st.selectbox("Mode", ["Solo/Duo", "Flex"], label_visibility="collapsed")
     st.markdown("<br>", unsafe_allow_html=True)
     submitted = st.form_submit_button(T["btn_scan"])
@@ -223,16 +222,22 @@ def analyze_qualities(stats, lang_dict):
     if stats['vis'] > 30: qualities.append(lang_dict.get("q_vis", "Vision"))
     
     scores = {
-        'kda': stats['kda'] / 3.0, 'dpm': stats['dpm'] / 500.0,
-        'vis': stats['vis'] / 25.0, 'obj': stats['obj'] / 3000.0,
+        'kda': stats['kda'] / 3.0,
+        'dpm': stats['dpm'] / 500.0,
+        'vis': stats['vis'] / 25.0,
+        'obj': stats['obj'] / 3000.0,
         'gold': stats['gold'] / 400.0
     }
     worst_stat = min(scores, key=scores.get)
+    
     flaws_map = {
-        'kda': lang_dict.get("f_feed", "Feed"), 'dpm': lang_dict.get("f_afk", "Low Dmg"),
-        'vis': lang_dict.get("f_blind", "No Vis"), 'obj': lang_dict.get("f_no_obj", "No Obj"),
+        'kda': lang_dict.get("f_feed", "Feed"),
+        'dpm': lang_dict.get("f_afk", "Low Dmg"),
+        'vis': lang_dict.get("f_blind", "No Vis"),
+        'obj': lang_dict.get("f_no_obj", "No Obj"),
         'gold': lang_dict.get("f_farm", "Low Farm")
     }
+    
     flaw = flaws_map.get(worst_stat, "Ok")
     q = qualities[0] if qualities else lang_dict.get("q_bal", "Balanced")
     return q, flaw
@@ -343,7 +348,7 @@ if submitted:
                     except: pass 
 
             # VERDICT
-            st.markdown("---")
+            st.markdown("<div id='result'></div>", unsafe_allow_html=True) # Anchor
             best_duo = None
             max_g = 0
             for k, v in duo_data.items():
@@ -355,7 +360,6 @@ if submitted:
                 g = best_duo['games']
                 duo_name = best_duo['name']
                 
-                # Role Detection
                 try: main_role_me = Counter(best_duo['my_roles']).most_common(1)[0][0]
                 except: main_role_me = "UNKNOWN"
                 try: main_role_duo = Counter(best_duo['roles']).most_common(1)[0][0]
@@ -367,13 +371,11 @@ if submitted:
                 s_me = best_duo['my_stats_vs']
                 s_duo = best_duo['stats']
                 
-                # SCORE V38 (ROLE AWARE)
                 def calc_score(s, role):
                     kda = s['kda'] / g
                     dpm = s['dpm'] / g
                     obj = s['obj'] / g 
                     vis = s['vis'] / g
-                    # Jungle nerf on obj
                     obj_factor = 0.15 if role == "JUNGLE" else 0.35 
                     score = (kda * 150) + (dpm * 0.4) + (obj * obj_factor) + (vis * 15)
                     return score
@@ -390,7 +392,6 @@ if submitted:
 
                 winrate = int((best_duo['wins']/g)*100)
 
-                # CONFIG AFFICHAGE
                 header_color = "#00ff99"
                 title_text = T.get("v_solid", "SOLID")
                 sub_text = T.get("s_solid", "Equal")
@@ -398,41 +399,42 @@ if submitted:
                 role_duo_key, role_duo_color = "role_equal", "color-green"
 
                 if state == "BOOSTED_HARD":
-                    header_color = "#ff4444"
-                    title_text = T.get("v_struggle", "STRUGGLE")
-                    sub_text = T.get("s_struggle", "{target} < {duo}").format(target=target_name, duo=duo_name)
+                    header_color, title_text = "#ff4444", T.get("v_struggle")
+                    sub_text = T.get("s_struggle", "").format(target=target_name, duo=duo_name)
                     role_me_key, role_me_color = "role_gap", "color-red"
                     role_duo_key, role_duo_color = "role_hyper", "color-gold"
-
                 elif state == "BOOSTED_SOFT":
-                    header_color = "#FFA500"
-                    title_text = T.get("v_passive", "PASSIVE")
-                    sub_text = T.get("s_passive", "{target} follows").format(target=target_name, duo=duo_name)
+                    header_color, title_text = "#FFA500", T.get("v_passive")
+                    sub_text = T.get("s_passive", "").format(target=target_name, duo=duo_name)
                     role_me_key, role_me_color = "role_supp", "color-orange"
                     role_duo_key, role_duo_color = "role_lead", "color-blue"
-
                 elif state == "BOOSTER_HARD":
-                    header_color = "#FFD700"
-                    title_text = T.get("v_hyper", "MVP")
-                    sub_text = T.get("s_hyper", "{target} carries").format(target=target_name)
+                    header_color, title_text = "#FFD700", T.get("v_hyper")
+                    sub_text = T.get("s_hyper", "").format(target=target_name)
                     role_me_key, role_me_color = "role_hyper", "color-gold"
                     role_duo_key, role_duo_color = "role_gap", "color-red"
-
                 elif state == "BOOSTER_SOFT":
-                    header_color = "#00BFFF"
-                    title_text = T.get("v_tactician", "TACTICIAN")
-                    sub_text = T.get("s_tactician", "{target} leads").format(target=target_name)
+                    header_color, title_text = "#00BFFF", T.get("v_tactician")
+                    sub_text = T.get("s_tactician", "").format(target=target_name)
                     role_me_key, role_me_color = "role_lead", "color-blue"
                     role_duo_key, role_duo_color = "role_supp", "color-orange"
 
+                # AUTO SCROLL JS
+                components.html(
+                    f"""<script>
+                        var element = window.parent.document.querySelector('.verdict-banner');
+                        if (element) element.scrollIntoView({{behavior: 'smooth', block: 'start'}});
+                    </script>""", height=0
+                )
+
                 st.markdown(f"""
                 <div class="verdict-banner" style="border-color:{header_color}">
-                    <div style="font-size:42px; font-weight:900; color:{header_color}; margin-bottom:10px;">{title_text}</div>
-                    <div style="font-size:18px; color:#ddd;">{sub_text}</div>
+                    <div style="font-size:32px; font-weight:900; color:{header_color}; margin-bottom:10px; text-transform:uppercase;">{title_text}</div>
+                    <div style="font-size:16px; color:#ddd;">{sub_text}</div>
                     <div style="margin-top:15px; font-size:14px; color:#888;">{g} Games • {winrate}% Winrate</div>
                 </div>""", unsafe_allow_html=True)
 
-                col_left, col_right = st.columns(2, gap="large")
+                col_left, col_right = st.columns(2, gap="small")
                 
                 stats_me = {'kda': avg_f(s_me, 'kda'), 'dpm': avg(s_me, 'dpm'), 'vis': avg(s_me, 'vis'), 'obj': avg(s_me, 'obj'), 'gold': avg(s_me, 'gold')}
                 stats_duo = {'kda': avg_f(s_duo, 'kda'), 'dpm': avg(s_duo, 'dpm'), 'vis': avg(s_duo, 'vis'), 'obj': avg(s_duo, 'obj'), 'gold': avg(s_duo, 'gold')}
@@ -441,7 +443,6 @@ if submitted:
                 qual_d, flaw_d = analyze_qualities(stats_duo, T)
 
                 with col_left:
-                    # Role Badge Added
                     st.markdown(f"""<div class="player-panel"><div class="player-name">{target_name}</div>
                     <div class="role-badge">{ROLE_ICONS.get(main_role_me, 'UNK')}</div>
                     <div class="player-role {role_me_color}">{T.get(role_me_key, 'PLAYER')}</div>""", unsafe_allow_html=True)
@@ -451,19 +452,14 @@ if submitted:
                     for ch in top_champs: html_champs += f"<img src='{get_champ_url(ch)}' class='champ-img'>"
                     html_champs += "</div>"
                     st.markdown(html_champs, unsafe_allow_html=True)
-                    st.markdown(f"<div class='stat-section-title'>{T['combat']}</div>", unsafe_allow_html=True)
                     render_stat_row("KDA", stats_me['kda'], stats_me['kda'] - stats_duo['kda'])
                     render_stat_row("DPM", stats_me['dpm'], stats_me['dpm'] - stats_duo['dpm'])
-                    st.markdown(f"<div class='stat-section-title'>{T['eco']} / {T['vision']}</div>", unsafe_allow_html=True)
                     render_stat_row("GOLD", int(avg(s_me, 'gold')), int(avg(s_me, 'gold')) - int(avg(s_duo, 'gold')))
                     render_stat_row("VISION", stats_me['vis'], stats_me['vis'] - stats_duo['vis'])
-                    st.markdown(f"<div class='stat-section-title'>OBJECTIVES</div>", unsafe_allow_html=True)
                     render_stat_row("OBJ DMG", stats_me['obj'], stats_me['obj'] - stats_duo['obj'])
-                    render_stat_row("TOWERS", avg_f(s_me, 'towers'), avg_f(s_me, 'towers') - avg_f(s_duo, 'towers'))
                     st.markdown("</div>", unsafe_allow_html=True)
 
                 with col_right:
-                    # Role Badge Added
                     st.markdown(f"""<div class="player-panel"><div class="player-name">{duo_name}</div>
                     <div class="role-badge">{ROLE_ICONS.get(main_role_duo, 'UNK')}</div>
                     <div class="player-role {role_duo_color}">{T.get(role_duo_key, 'PLAYER')}</div>""", unsafe_allow_html=True)
@@ -473,15 +469,11 @@ if submitted:
                     for ch in top_champs_d: html_champs_d += f"<img src='{get_champ_url(ch)}' class='champ-img'>"
                     html_champs_d += "</div>"
                     st.markdown(html_champs_d, unsafe_allow_html=True)
-                    st.markdown(f"<div class='stat-section-title'>{T['combat']}</div>", unsafe_allow_html=True)
                     render_stat_row("KDA", stats_duo['kda'], stats_duo['kda'] - stats_me['kda'])
                     render_stat_row("DPM", stats_duo['dpm'], stats_duo['dpm'] - stats_me['dpm'])
-                    st.markdown(f"<div class='stat-section-title'>{T['eco']} / {T['vision']}</div>", unsafe_allow_html=True)
                     render_stat_row("GOLD", int(avg(s_duo, 'gold')), int(avg(s_duo, 'gold')) - int(avg(s_me, 'gold')))
                     render_stat_row("VISION", stats_duo['vis'], stats_duo['vis'] - stats_me['vis'])
-                    st.markdown(f"<div class='stat-section-title'>OBJECTIVES</div>", unsafe_allow_html=True)
                     render_stat_row("OBJ DMG", stats_duo['obj'], stats_duo['obj'] - stats_me['obj'])
-                    render_stat_row("TOWERS", avg_f(s_duo, 'towers'), avg_f(s_duo, 'towers') - avg_f(s_me, 'towers'))
                     st.markdown("</div>", unsafe_allow_html=True)
 
             else:
