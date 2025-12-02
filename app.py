@@ -9,7 +9,7 @@ import concurrent.futures
 import threading
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V66", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V67", layout="wide")
 
 # --- API KEY ---
 try:
@@ -34,7 +34,7 @@ ROLE_ICONS = {
     "BOTTOM": "🏹 ADC", "UTILITY": "🩹 SUPP", "UNKNOWN": "❓ FILL"
 }
 
-# --- TRADUCTIONS COMPLÈTES (PLUS DE KEYERROR) ---
+# --- TRADUCTIONS (CETTE FOIS COMPLÈTES) ---
 TRANSLATIONS = {
     "FR": {
         "title": "LoL Duo Analyst",
@@ -44,6 +44,7 @@ TRANSLATIONS = {
         "lbl_region": "RÉGION",
         "lbl_mode": "MODE",
         "dpm_btn": "🔗 Voir sur dpm.lol",
+        "lbl_duo_detected": "DUO DÉTECTÉ AVEC {duo}", # AJOUTÉ ICI
         
         "v_hyper": "MVP TOTAL", "s_hyper": "{target} porte {duo} sur ses épaules (1v9)",
         "v_tactician": "MASTERMIND", "s_tactician": "{target} gagne la game pour {duo} grâce à la macro",
@@ -58,6 +59,7 @@ TRANSLATIONS = {
         "role_hyper": "CARRY", "role_lead": "MENEUR", "role_equal": "PARTENAIRE", "role_supp": "SOUTIEN", "role_gap": "ROOKIE",
         "q_surv": "Injouable (KDA)", "q_dmg": "Gros Dégâts", "q_obj": "Destructeur", "q_vis": "Contrôle Map", "q_bal": "Polyvalent", "q_supp": "Excellent Support",
         "f_feed": "Meurt trop souvent", "f_afk": "Dégâts faibles", "f_no_obj": "Ignore objectifs", "f_blind": "Vision faible", "f_farm": "Farm faible", "f_ok": "Solide",
+        
         "stats": "STATS", "combat": "COMBAT", "eco": "ÉCONOMIE", "vision": "VISION & MAP",
         "error_no_games": "Aucune partie trouvée.", "error_hint": "Vérifie la région ou le mode de jeu."
     },
@@ -69,6 +71,7 @@ TRANSLATIONS = {
         "lbl_region": "REGION",
         "lbl_mode": "MODE",
         "dpm_btn": "🔗 Check dpm.lol",
+        "lbl_duo_detected": "DUO DETECTED WITH {duo}", # AJOUTÉ ICI
         
         "v_hyper": "TOTAL MVP", "s_hyper": "{target} is hard carrying {duo}",
         "v_tactician": "MASTERMIND", "s_tactician": "{target} wins for {duo} via macro",
@@ -84,59 +87,16 @@ TRANSLATIONS = {
         "stats": "STATS", "combat": "COMBAT", "eco": "ECONOMY", "vision": "VISION",
         "error_no_games": "No games found.", "error_hint": "Check Region."
     },
-    "ES": {
-        "title": "Analista LoL",
-        "btn_scan": "ANALIZAR",
-        "placeholder": "Ejemplo: Ibai#EUW",
-        "label_id": "Riot ID",
-        "lbl_region": "REGIÓN",
-        "lbl_mode": "MODO",
-        "dpm_btn": "Ver dpm.lol",
-        "v_hyper": "MVP TOTAL", "s_hyper": "{target} domina a {duo}",
-        "v_tactician": "ESTRATEGA", "s_tactician": "Macro para {duo}",
-        "v_fighter": "GLADIADOR", "s_fighter": "{target} daña, {duo} objetivos",
-        "v_solid": "DUO SÓLIDO", "s_solid": "Sinergia con {duo}",
-        "v_passive": "PASIVO", "s_passive": "{target} seguro, {duo} lidera",
-        "v_struggle": "DIFICULTAD", "s_struggle": "{target} sufre vs {duo}",
-        "solo": "SOLO", "solo_sub": "Sin duo",
-        "loading": "Cargando...",
-        "role_hyper": "CARRY", "role_lead": "LIDER", "role_equal": "SOCIO", "role_supp": "APOYO", "role_gap": "NOVATO",
-        "q_surv": "Inmortal", "q_dmg": "Daño", "q_obj": "Torres", "q_vis": "Vision", "q_bal": "Balance", "q_supp": "Support",
-        "f_feed": "Muere", "f_afk": "Poco daño", "f_no_obj": "Sin obj", "f_blind": "Ciego", "f_farm": "Farm", "f_ok": "Bien",
-        "stats": "STATS", "combat": "COMBATE", "eco": "ECONOMIA", "vision": "VISION",
-        "error_no_games": "Error", "error_hint": "Region?"
-    },
-    "KR": {
-        "title": "LoL 듀오 분석",
-        "btn_scan": "분석 시작",
-        "placeholder": "예: Hide on bush#KR1",
-        "label_id": "소환사명",
-        "lbl_region": "지역",
-        "lbl_mode": "모드",
-        "dpm_btn": "dpm.lol 확인",
-        "v_hyper": "하드 캐리", "s_hyper": "{target} > {duo}",
-        "v_tactician": "전략가", "s_tactician": "운영 승리",
-        "v_fighter": "전투광", "s_fighter": "딜 집중",
-        "v_solid": "완벽 듀오", "s_solid": "{target} & {duo}",
-        "v_passive":"버스 탑승", "s_passive": "안전 지향",
-        "v_struggle": "고전 중", "s_struggle": "{target} 역부족",
-        "solo": "솔로", "solo_sub": "듀오 없음",
-        "loading": "분석 중...",
-        "role_hyper": "캐리", "role_lead": "리더", "role_equal": "파트너", "role_supp": "서포터", "role_gap": "신입",
-        "q_surv": "생존", "q_dmg": "딜량", "q_obj": "철거", "q_vis": "시야", "q_bal": "밸런스", "q_supp": "서폿",
-        "f_feed": "데스", "f_afk": "딜부족", "f_no_obj": "운영부족", "f_blind": "시야부족", "f_farm": "CS", "f_ok": "굿",
-        "stats": "통계", "combat": "전투", "eco": "경제", "vision": "시야",
-        "error_no_games": "없음", "error_hint": "지역?"
-    }
+    "ES": {"title":"Analista LoL","btn_scan":"ANALIZAR","placeholder":"Ejemplo: Ibai#EUW","label_id":"Riot ID","lbl_region":"REGIÓN","lbl_mode":"MODO","dpm_btn":"Ver dpm.lol","lbl_duo_detected":"DUO CON {duo}","v_hyper":"MVP TOTAL","s_hyper":"Domina a {duo}","v_tactician":"ESTRATEGA","s_tactician":"Macro para {duo}","v_fighter":"GLADIADOR","s_fighter":"Daño","v_solid":"DUO SOLIDO","s_solid":"Sinergia con {duo}","v_passive":"PASIVO","s_passive":"Seguro","v_struggle":"DIFICULTAD","s_struggle":"Sufre vs {duo}","solo":"SOLO","solo_sub":"Sin duo","loading":"Cargando...","role_hyper":"CARRY","role_lead":"LIDER","role_equal":"SOCIO","role_supp":"APOYO","role_gap":"NOVATO","q_surv":"Inmortal","q_dmg":"Daño","q_obj":"Torres","q_vis":"Vision","q_bal":"Balance","q_supp":"Support","f_feed":"Muere","f_afk":"Poco daño","f_no_obj":"Sin obj","f_blind":"Ciego","f_farm":"Farm","f_ok":"Bien","stats":"STATS","combat":"COMBATE","eco":"ECONOMIA","vision":"VISION","error_no_games":"Error","error_hint":"Region?"},
+    "KR": {"title":"LoL 듀오 분석","btn_scan":"분석 시작","placeholder":"예: Hide on bush#KR1","label_id":"Riot ID","lbl_region":"지역","lbl_mode":"모드","dpm_btn":"dpm.lol 확인","lbl_duo_detected":"{duo} 와 듀오","v_hyper":"하드 캐리","s_hyper":"{target} > {duo}","v_tactician":"전략가","s_tactician":"운영","v_fighter":"전투광","s_fighter":"딜","v_solid":"완벽 듀오","s_solid":"{target} & {duo}","v_passive":"버스","s_passive":"안전","v_struggle":"고전","s_struggle":"역부족","solo":"솔로","solo_sub":"듀오 없음","loading":"분석 중...","role_hyper":"캐리","role_lead":"리더","role_equal":"파트너","role_supp":"서포터","role_gap":"신입","q_surv":"생존","q_dmg":"딜량","q_obj":"철거","q_vis":"시야","q_bal":"밸런스","q_supp":"서폿","f_feed":"데스","f_afk":"딜부족","f_no_obj":"운영부족","f_blind":"시야부족","f_farm":"CS","f_ok":"굿","stats":"통계","combat":"전투","eco":"경제","vision":"시야","error_no_games":"없음","error_hint":"지역?"}
 }
 
 # --- MAP DRAPEAUX ---
 LANG_MAP = {"🇫🇷 FR": "FR", "🇺🇸 EN": "EN", "🇪🇸 ES": "ES", "🇰🇷 KR": "KR"}
 
 # --- CSS MODERNE ---
-st.markdown(
-    f"""
-    <style>
+st.markdown(f"""
+<style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap');
     html, body, [class*="css"] {{ font-family: 'Inter', sans-serif; }}
     
@@ -145,9 +105,11 @@ st.markdown(
         background-size: 150px; background-repeat: repeat; background-attachment: fixed;
     }}
     
+    /* RECENTRAGE ET MARGES */
     .block-container {{
         max-width: 1400px !important; 
-        padding-top: 3rem !important; padding-bottom: 3rem !important;
+        padding-top: 3rem !important;
+        padding-bottom: 3rem !important;
         background: rgba(12, 12, 12, 0.95); backdrop-filter: blur(15px);
         border-radius: 15px; border: 1px solid #333; box-shadow: 0 20px 50px rgba(0,0,0,0.9);
         margin-top: 20px !important;
@@ -160,7 +122,6 @@ st.markdown(
         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         filter: drop-shadow(0 0 10px rgba(0, 114, 255, 0.5)); text-transform: uppercase;
     }}
-    @media (max-width: 800px) {{ .main-title {{ font-size: 40px; }} }}
     
     /* CARTE JOUEUR */
     .player-card {{
@@ -171,7 +132,7 @@ st.markdown(
     .player-name {{ font-size: 28px; font-weight: 800; color: white; margin-bottom: 5px; }}
     .player-sub {{ font-size: 14px; color: #aaa; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }}
 
-    /* BADGES */
+    /* BADGES DE STYLE */
     .badge {{
         display: inline-block; padding: 4px 8px; border-radius: 4px; 
         font-size: 11px; font-weight: 700; margin: 2px; text-transform: uppercase;
@@ -181,14 +142,15 @@ st.markdown(
     .b-blue {{ background: rgba(0, 191, 255, 0.15); color: #00BFFF; border: 1px solid #00BFFF; }}
     .b-gold {{ background: rgba(255, 215, 0, 0.15); color: #FFD700; border: 1px solid #FFD700; }}
 
-    /* STATS GRID */
-    .stat-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; margin-bottom: 0px; }}
-    .stat-item {{ background: rgba(0,0,0,0.3); padding: 12px; border-radius: 10px; text-align: left; border: 1px solid rgba(255,255,255,0.05); }}
+    /* STATS GRID AVEC DIFF */
+    .stat-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; margin-bottom: 0px; }}
+    .stat-item {{ background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; text-align: left; border: 1px solid rgba(255,255,255,0.05); }}
     .stat-val-container {{ display: flex; align-items: center; gap: 8px; }}
-    .stat-val {{ font-size: 20px; font-weight: 700; color: white; }}
+    .stat-val {{ font-size: 18px; font-weight: 700; color: white; }}
     .stat-lbl {{ font-size: 11px; color: #999; text-transform: uppercase; margin-top: 4px; font-weight: 600; letter-spacing: 0.5px; }}
     
-    .stat-diff {{ font-size: 12px; font-weight: 700; padding: 2px 5px; border-radius: 4px; }}
+    /* DIFFERENCES VERT/ROUGE */
+    .stat-diff {{ font-size: 12px; font-weight: 700; padding: 2px 4px; border-radius: 4px; }}
     .pos {{ color: #00ff99; background: rgba(0,255,153,0.15); }} 
     .neg {{ color: #ff4444; background: rgba(255,68,68,0.15); }}
     .neutral {{ color: #888; }}
@@ -200,24 +162,16 @@ st.markdown(
     }}
     
     /* DPM BUTTON */
-    .dpm-btn-mini {{
-        display: inline-block;
-        background-color: rgba(37, 99, 235, 0.2); color: #60a5fa !important;
-        padding: 4px 10px; border-radius: 6px; text-decoration: none;
-        font-weight: 700; font-size: 12px; border: 1px solid #2563eb;
-        transition: 0.2s;
+    .dpm-btn {{
+        background: rgba(37, 99, 235, 0.2); color: #60a5fa !important; padding: 5px 10px;
+        border-radius: 6px; text-decoration: none; font-size: 12px; border: 1px solid #2563eb;
     }}
-    .dpm-btn-mini:hover {{ background-color: #2563eb; color: white !important; }}
-
-    /* INPUT LABELS */
-    .input-label-row {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }}
-    .custom-label {{ font-size: 14px; font-weight: 700; color: #ddd; text-transform: uppercase; }}
 
     /* BUTTON SCAN */
     .stButton > button {{
         width: 100%; height: 55px; background: linear-gradient(135deg, #ff0055, #cc0044);
         color: white; font-size: 20px; font-weight: 800; border: none; border-radius: 10px;
-        text-transform: uppercase; transition: 0.3s; box-shadow: 0 0 15px rgba(255, 0, 85, 0.3);
+        text-transform: uppercase; transition: 0.3s;
     }}
     .stButton > button:hover {{ transform: translateY(-2px); box-shadow: 0 5px 25px rgba(255,0,60,0.5); }}
     
@@ -239,28 +193,22 @@ st.markdown(f'<div class="main-title">{T["title"]}</div>', unsafe_allow_html=Tru
 
 # --- FORMULAIRE ---
 with st.form("search_form"):
-    c1, c2, c3 = st.columns([3, 1, 1], gap="medium")
-    
+    c1, c2, c3 = st.columns([3, 1, 1], gap="small")
     with c1:
-        # Label + Bouton DPM
         st.markdown(f"""
-        <div class="input-label-row">
-            <span class="custom-label">{T['label_id']}</span>
-            <a href="https://dpm.lol" target="_blank" class="dpm-btn-mini">{T['dpm_btn']}</a>
-        </div>
-        """, unsafe_allow_html=True)
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+            <span style="font-size:14px; font-weight:700; color:#ddd;">{T['label_id']}</span>
+            <a href="https://dpm.lol" target="_blank" class="dpm-btn">{T['dpm_btn']}</a>
+        </div>""", unsafe_allow_html=True)
         riot_id_input = st.text_input("HiddenLabel", placeholder=T["placeholder"], label_visibility="collapsed")
-        
     with c2:
-        st.markdown(f"<div style='margin-bottom:5px'><span class='custom-label'>{T['lbl_region']}</span></div>", unsafe_allow_html=True)
+        st.markdown(f"<span style='font-size:14px; font-weight:700; color:#ddd;'>{T['lbl_region']}</span>", unsafe_allow_html=True)
         region_select = st.selectbox("RegionLabel", ["EUW1", "NA1", "KR", "EUN1", "TR1"], label_visibility="collapsed")
-        
     with c3:
-        st.markdown(f"<div style='margin-bottom:5px'><span class='custom-label'>{T['lbl_mode']}</span></div>", unsafe_allow_html=True)
+        st.markdown(f"<span style='font-size:14px; font-weight:700; color:#ddd;'>{T['lbl_mode']}</span>", unsafe_allow_html=True)
         queue_label = st.selectbox("ModeLabel", list(QUEUE_MAP.keys()), label_visibility="collapsed")
     
     st.markdown("<br>", unsafe_allow_html=True)
-    # BOUTON INDENTÉ DANS LE FORMULAIRE
     submitted = st.form_submit_button(T["btn_scan"])
 
 # --- HELPERS ---
@@ -288,6 +236,7 @@ def determine_playstyle(stats, role, lang_dict):
     if stats['vis_min'] >= 2.0 or (role == "UTILITY" and stats['vis_min'] >= 2.5): badges.append((lang_dict.get("q_vis", "Oracle"), "b-blue")) 
     if stats['kp'] >= 0.65: badges.append(("Teamplayer", "b-green"))
     if stats['dmg_min'] >= 800: badges.append((lang_dict.get("q_dmg", "Heavy Hitter"), "b-red"))
+    if stats['solokills'] >= 2.5: badges.append(("Duelist", "b-red"))
     if stats['obj'] >= 5000: badges.append((lang_dict.get("q_obj", "Breacher"), "b-gold"))
     if stats['kda'] < 1.5: badges.append((lang_dict.get("f_feed", "Grey Screen"), "b-red"))
     if stats['vis_min'] < 0.4 and role != "ADC": badges.append((lang_dict.get("f_blind", "Blind"), "b-red"))
@@ -314,7 +263,8 @@ def create_radar(data_list, names, colors, title=None, height=400, show_legend=T
         legend=dict(font=dict(color='white', size=12), orientation="h", y=-0.15, x=0.5, xanchor="center", bgcolor='rgba(0,0,0,0)'),
         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
         margin=dict(l=60, r=60, t=40 if title else 20, b=60),
-        height=height
+        height=height,
+        title=dict(text=title, x=0.5, y=0.95, font=dict(color='white', size=16)) if title else None
     )
     return fig
 
@@ -359,10 +309,9 @@ if submitted:
                     st.warning(f"{T['error_no_games']} ({queue_label})")
                     st.stop()
             except Exception as e:
-                st.error(f"API Error: {e}")
+                st.error(f"Erreur API: {e}")
                 st.stop()
 
-            # PROCESSING
             duo_data = {}
             target_name = riot_id_input
             data_lock = threading.Lock()
@@ -464,7 +413,7 @@ if submitted:
                 if ratio > 1.35: title, color, sub = T["v_hyper"], "#FFD700", safe_format(T["s_hyper"], target_name, duo_name)
                 elif ratio > 1.15: title, color, sub = T["v_tactician"], "#00BFFF", safe_format(T["s_tactician"], target_name, duo_name)
                 elif ratio < 0.75: title, color, sub = T["v_struggle"], "#ff4444", safe_format(T["s_struggle"], target_name, duo_name)
-                elif ratio < 0.9: title, color, sub = T["v_supp"], "#FFA500", safe_format(T["s_supp"], target_name, duo_name)
+                elif ratio < 0.9: title, color, sub = T["v_passive"], "#FFA500", safe_format(T["s_passive"], target_name, duo_name)
                 else: title, color, sub = T["v_solid"], "#00ff99", T["s_solid"]
 
                 components.html(f"<script>window.parent.document.querySelector('.verdict-box').scrollIntoView({{behavior:'smooth'}});</script>", height=0)
