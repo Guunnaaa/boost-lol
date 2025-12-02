@@ -9,7 +9,7 @@ import concurrent.futures
 import threading
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V61", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V62", layout="wide")
 
 # --- API KEY ---
 try:
@@ -20,7 +20,6 @@ except FileNotFoundError:
 
 # --- ASSETS & CONSTANTS ---
 BACKGROUND_IMAGE_URL = "https://media.discordapp.net/attachments/1065027576572518490/1179469739770630164/face_tiled.jpg?ex=657a90f2&is=65681bf2&hm=123"
-DD_VERSION = "13.24.1" # Valeur par défaut temporaire
 
 QUEUE_MAP = {
     "Ranked Solo/Duo": 420,
@@ -34,6 +33,9 @@ ROLE_ICONS = {
     "TOP": "🛡️ TOP", "JUNGLE": "🌲 JUNGLE", "MIDDLE": "🧙 MID", 
     "BOTTOM": "🏹 ADC", "UTILITY": "🩹 SUPP", "UNKNOWN": "❓ FILL"
 }
+
+# --- MAP DRAPEAUX (Définition avant utilisation) ---
+LANG_MAP = {"🇫🇷 FR": "FR", "🇺🇸 EN": "EN", "🇪🇸 ES": "ES", "🇰🇷 KR": "KR"}
 
 # --- CSS MODERNE (HEXTECH UI V2) ---
 st.markdown(f"""
@@ -49,7 +51,7 @@ st.markdown(f"""
     /* RECENTRAGE ET MARGES */
     .block-container {{
         max-width: 1400px !important; 
-        padding-top: 3rem !important; /* Plus d'espace en haut */
+        padding-top: 3rem !important;
         padding-bottom: 3rem !important;
         background: rgba(12, 12, 12, 0.95); backdrop-filter: blur(15px);
         border-radius: 15px; border: 1px solid #333; box-shadow: 0 20px 50px rgba(0,0,0,0.9);
@@ -120,7 +122,13 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# --- HEADER ---
+# --- HEADER & LANGUAGE ---
+c_title, c_lang = st.columns([5, 1])
+with c_lang:
+    # Utilisation de LANG_MAP défini plus haut
+    selected_label = st.selectbox("Lang", list(LANG_MAP.keys()), label_visibility="collapsed")
+    lang_code = LANG_MAP[selected_label]
+
 st.markdown('<div class="main-title">LoL Duo Analyst</div>', unsafe_allow_html=True)
 
 # --- FORMULAIRE ---
@@ -445,7 +453,7 @@ if submitted:
                         {stat_grid_html}
                     </div>
                     """, unsafe_allow_html=True)
-                    # Petit graph individuel
+                    # Petit graph individuel en bas
                     fig_indiv = create_radar([chart_data], [name], [color_theme], height=200, show_legend=False)
                     st.plotly_chart(fig_indiv, use_container_width=True, config={'displayModeBar': False})
 
