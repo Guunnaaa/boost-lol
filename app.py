@@ -8,7 +8,7 @@ import concurrent.futures
 import threading
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V51", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V52", layout="wide")
 
 # --- API KEY ---
 try:
@@ -143,7 +143,11 @@ st.markdown(f'<div class="main-title">{T["title"]}</div>', unsafe_allow_html=Tru
 with st.form("search_form"):
     c1, c2, c3 = st.columns([3, 1, 1], gap="small")
     with c1:
-        st.markdown(f"""<div class="input-row"><span class="input-label">{T['label_id']}</span><a href="https://dpm.lol" target="_blank" class="dpm-button-small">{T['dpm_btn']}</a></div>""", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class="input-row">
+            <span class="input-label">{T['label_id']}</span>
+            <a href="https://dpm.lol" target="_blank" class="dpm-button-small">{T['dpm_btn']}</a>
+        </div>""", unsafe_allow_html=True)
         riot_id_input = st.text_input("HiddenLabel", placeholder=T["placeholder"], label_visibility="collapsed")
     with c2:
         st.markdown(f"<div style='margin-bottom:5px'><span class='input-label'>Region</span></div>", unsafe_allow_html=True)
@@ -165,8 +169,10 @@ def safe_format(text, target, duo):
     try: return text.format(target=target, duo=duo)
     except: return text
 
-# --- FONCTION D'ANALYSE (NOM CORRIGÉ) ---
+# --- C'EST ICI QUE L'ERREUR ÉTAIT ---
+# La fonction s'appelle maintenant 'analyze_qualities' partout
 def analyze_qualities(stats, role, lang_dict):
+    """Analyse Intelligente (V52)"""
     qualities, flaws = [], []
     
     # --- QUALITÉS ---
@@ -175,9 +181,8 @@ def analyze_qualities(stats, role, lang_dict):
     if stats['dpm'] > 750: qualities.append(lang_dict.get("q_dmg", "High Dmg"))
     if stats['vis'] > 35: qualities.append(lang_dict.get("q_vis", "Vision"))
     
-    # --- DÉFAUTS INTELLIGENTS ---
+    # --- DÉFAUTS CONTEXTUELS ---
     flaw = lang_dict.get("f_ok", "Solid")
-    
     if role == "UTILITY":
         if stats['vis'] < 20: flaw = lang_dict.get("f_blind", "No Vis")
         elif stats['kda'] < 2.0: flaw = lang_dict.get("f_feed", "Feed")
@@ -380,6 +385,11 @@ if submitted:
                 </div>""", unsafe_allow_html=True)
 
                 col_left, col_right = st.columns(2, gap="large")
+                
+                stats_me = {'kda': avg_f(s_me, 'kda'), 'dpm': avg(s_me, 'dpm'), 'vis': avg(s_me, 'vis'), 'obj': avg(s_me, 'obj'), 'gold': avg(s_me, 'gold')}
+                stats_duo = {'kda': avg_f(s_duo, 'kda'), 'dpm': avg(s_duo, 'dpm'), 'vis': avg(s_duo, 'vis'), 'obj': avg(s_duo, 'obj'), 'gold': avg(s_duo, 'gold')}
+                
+                # APPEL CORRIGÉ ICI
                 qual, flaw = analyze_qualities(stats_me, main_role_me, T)
                 qual_d, flaw_d = analyze_qualities(stats_duo, main_role_duo, T)
 
