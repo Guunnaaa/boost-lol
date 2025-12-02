@@ -6,7 +6,7 @@ from collections import Counter
 import concurrent.futures
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V36", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V37", layout="wide")
 
 # --- API KEY ---
 try:
@@ -32,77 +32,51 @@ TRANSLATIONS = {
     "FR": {
         "title": "LoL Duo Analyst",
         "btn_scan": "LANCER L'ANALYSE",
-        "placeholder": "Exemple: Sardoche#EUW",
+        "placeholder": "Exemple: Hide on bush#KR1", # Faker
         "label_id": "Riot ID",
         "dpm_btn": "🔗 Voir sur dpm.lol",
         
-        "v_hyper": "CARRY SOLITAIRE",
-        "s_hyper": "{target} porte la game sur ses épaules",
-        "v_lead": "LEADER TECHNIQUE",
-        "s_lead": "{target} a un léger avantage statistique",
-        "v_equal": "DUO FUSIONNEL",
-        "s_equal": "Synergie Parfaite : Ils se complètent totalement",
-        "v_supp": "SOUTIEN STRATÉGIQUE",
-        "s_supp": "{target} joue pour l'équipe, {duo} finit le travail",
-        "v_gap": "EN DIFFICULTÉ",
-        "s_gap": "{target} peine à suivre le rythme de {duo}",
+        "v_hyper": "MVP TOTAL", "s_hyper": "{target} domine la faille (Combat & Objectifs)",
+        "v_tactician": "MASTERMIND", "s_tactician": "{target} gagne grâce à la macro",
+        "v_fighter": "GLADIATEUR", "s_fighter": "{target} fait les dégâts, {duo} prend les objectifs",
+        "v_solid": "DUO FUSIONNEL", "s_solid": "Contribution parfaitement équilibrée",
+        "v_passive": "EN RETRAIT", "s_passive": "{target} joue safe, {duo} mène le jeu",
+        "v_struggle": "EN DIFFICULTÉ", "s_struggle": "{target} peine à suivre le rythme de {duo}",
 
-        "solo": "LOUP SOLITAIRE",
-        "solo_sub": "Aucun duo récurrent sur 20 parties.",
+        "solo": "LOUP SOLITAIRE", "solo_sub": "Aucun duo récurrent sur 20 parties.",
         "loading": "Analyse tactique en cours...",
         
-        "role_hyper": "CARRY", "role_lead": "MENEUR", "role_equal": "PARTENAIRE",
-        "role_supp": "SOUTIEN", "role_gap": "ROOKIE",
+        "role_hyper": "CARRY", "role_lead": "MENEUR", "role_equal": "PARTENAIRE", "role_supp": "SOUTIEN", "role_gap": "ROOKIE",
         
-        "q_surv": "Injouable (KDA)", "q_dmg": "Gros Dégâts", "q_obj": "Destructeur",
-        "q_vis": "Contrôle Map", "q_bal": "Polyvalent",
+        "q_surv": "Injouable (KDA)", "q_dmg": "Gros Dégâts", "q_obj": "Destructeur", "q_vis": "Contrôle Map", "q_bal": "Polyvalent",
+        "f_feed": "Meurt trop", "f_afk": "Dégâts faibles", "f_no_obj": "Ignore objectifs", "f_blind": "Vision faible", "f_farm": "Farm faible", "f_ok": "Solide",
         
-        "f_feed": "Meurt trop", "f_afk": "Pas de dégâts", "f_no_obj": "Ignore objectifs",
-        "f_blind": "Vision faible", "f_farm": "Farm faible", "f_ok": "Solide",
-        
-        "stats": "PERF DE", "combat": "COMBAT", "eco": "ÉCONOMIE",
-        "vision": "VISION & MAP", "error_no_games": "Aucune partie trouvée.", "error_hint": "Vérifie le mode de jeu."
+        "stats": "PERF DE", "combat": "COMBAT", "eco": "ÉCONOMIE", "vision": "VISION & MAP",
+        "error_no_games": "Aucune partie trouvée.", "error_hint": "Vérifie la région."
     },
     "EN": {
         "title": "LoL Duo Analyst",
         "btn_scan": "START ANALYSIS",
-        "placeholder": "Example: Faker#KR1",
+        "placeholder": "Example: Hide on bush#KR1",
         "label_id": "Riot ID",
         "dpm_btn": "🔗 Check dpm.lol",
         
-        "v_hyper": "SOLO CARRY", "s_hyper": "{target} is doing everything alone",
-        "v_lead": "TECHNICAL LEADER", "s_lead": "{target} has a slight statistical edge",
-        "v_equal": "PERFECT SYNERGY", "s_equal": "Perfect Match: They complete each other",
-        "v_supp": "STRATEGIC SUPPORT", "s_supp": "{target} sets up the plays, {duo} finishes them",
-        "v_gap": "STRUGGLING", "s_gap": "{target} is having a hard time keeping up",
+        "v_hyper": "TOTAL MVP", "s_hyper": "{target} dominates the rift",
+        "v_tactician": "MASTERMIND", "s_tactician": "{target} wins through macro",
+        "v_fighter": "GLADIATOR", "s_fighter": "{target} deals dmg, {duo} takes objs",
+        "v_solid": "PERFECT DUO", "s_solid": "Balanced contribution",
+        "v_passive": "PASSIVE", "s_passive": "{target} plays safe, {duo} leads",
+        "v_struggle": "STRUGGLING", "s_struggle": "{target} can't keep up with {duo}",
 
         "solo": "SOLO PLAYER", "solo_sub": "No recurring partner found.",
-        "loading": "Analyzing synergy...",
-        
-        "role_hyper": "CARRY", "role_lead": "LEADER", "role_equal": "PARTNER",
-        "role_supp": "SUPPORT", "role_gap": "ROOKIE",
-        
-        "q_surv": "Unkillable", "q_dmg": "Heavy Hitter", "q_obj": "Destroyer",
-        "q_vis": "Map Control", "q_bal": "Balanced",
-        
-        "f_feed": "Dies too much", "f_afk": "Low Dmg", "f_no_obj": "Ignores Objs",
-        "f_blind": "Low Vision", "f_farm": "Low Farm", "f_ok": "Solid",
-
-        "stats": "STATS FOR", "combat": "COMBAT", "eco": "ECONOMY",
-        "vision": "VISION & MAP", "error_no_games": "No games found.", "error_hint": "Check Game Mode."
+        "loading": "Analyzing...",
+        "stats": "STATS FOR", "combat": "COMBAT", "eco": "ECONOMY", "vision": "VISION",
+        "error_no_games": "No games found.", "error_hint": "Check Region.",
+        "q_surv": "Unkillable", "q_dmg": "Heavy Hitter", "q_obj": "Destroyer", "q_vis": "Map Control", "q_bal": "Balanced",
+        "f_feed": "Too fragile (KDA)", "f_afk": "Low Damage", "f_no_obj": "Ignores Objs", "f_blind": "Low Vision", "f_farm": "Low Farm", "f_ok": "Solid"
     },
-    "ES": {"title":"Analista LoL","btn_scan":"ANALIZAR","placeholder":"Ejemplo: Ibai#EUW","label_id":"Riot ID","dpm_btn":"Ver dpm.lol","v_hyper":"MVP TOTAL","s_hyper":"Domina","v_lead":"LIDER","s_lead":"Ventaja","v_equal":"SINERGIA","s_equal":"Equilibrio","v_supp":"APOYO","s_supp":"Ayuda","v_gap":"DIFICULTAD","s_gap":"Sufre","solo":"SOLO","solo_sub":"Sin duo","loading":"Cargando...","role_hyper":"CARRY","role_lead":"LIDER","role_equal":"SOCIO","role_supp":"APOYO","role_gap":"NOVATO","q_surv":"Inmortal","q_dmg":"Daño","q_obj":"Torres","q_vis":"Vision","q_bal":"Balance","f_feed":"Muere","f_afk":"Poco daño","f_no_obj":"Sin obj","f_blind":"Ciego","f_farm":"Farm","f_ok":"Bien","stats":"STATS","combat":"COMBATE","eco":"ECONOMIA","vision":"VISION","error_no_games":"Error","error_hint":"Region?"},
-    "KR": {"title":"LoL 듀오 분석","btn_scan":"분석 시작","placeholder":"예: Hide on bush#KR1","label_id":"Riot ID","dpm_btn":"dpm.lol 확인","v_hyper":"하드 캐리","s_hyper":"독무대","v_lead":"리더","s_lead":"우세","v_equal":"완벽 듀오","s_equal":"상호 보완","v_supp":"전략적 서포트","s_supp":"조력자","v_gap":"고전 중","s_gap":"역부족","solo":"솔로","solo_sub":"듀오 없음","loading":"분석 중...","role_hyper":"캐리","role_lead":"리더","role_equal":"파트너","role_supp":"서포터","role_gap":"신입","q_surv":"생존","q_dmg":"딜량","q_obj":"철거","q_vis":"시야","q_bal":"밸런스","f_feed":"데스","f_afk":"딜부족","f_no_obj":"운영부족","f_blind":"시야부족","f_farm":"CS","f_ok":"굿","stats":"통계","combat":"전투","eco":"경제","vision":"시야","error_no_games":"없음","error_hint":"지역?"}
-}
-
-# --- QUEUE MAP (ID RIOT) ---
-QUEUE_MAP = {
-    "Ranked Solo/Duo": 420,
-    "Ranked Flex": 440,
-    "Draft Normal": 400,
-    "Quickplay": 490,
-    "ARAM": 450,
-    "Arena": 1700
+    "ES": {"title":"Analista LoL","btn_scan":"ANALIZAR","placeholder":"Ejemplo: Hide on bush#KR1","label_id":"Riot ID","dpm_btn":"Ver dpm.lol","v_hyper":"MVP TOTAL","s_hyper":"Domina","v_tactician":"ESTRATEGA","s_tactician":"Macro","v_fighter":"GLADIADOR","s_fighter":"Daño","v_solid":"DUO SOLIDO","s_solid":"Equilibrio","v_passive":"PASIVO","s_passive":"Seguro","v_struggle":"DIFICULTAD","s_struggle":"Sufre","solo":"SOLO","solo_sub":"Sin duo","loading":"Cargando...","role_hyper":"CARRY","role_lead":"LIDER","role_equal":"SOCIO","role_supp":"APOYO","role_gap":"NOVATO","q_surv":"Inmortal","q_dmg":"Daño","q_obj":"Torres","q_vis":"Vision","q_bal":"Balance","f_feed":"Muere","f_afk":"Poco daño","f_no_obj":"Sin obj","f_blind":"Ciego","f_farm":"Farm","f_ok":"Bien","stats":"STATS","combat":"COMBATE","eco":"ECONOMIA","vision":"VISION","error_no_games":"Error","error_hint":"Region?"},
+    "KR": {"title":"LoL 듀오 분석","btn_scan":"분석 시작","placeholder":"예: Hide on bush#KR1","label_id":"Riot ID","dpm_btn":"dpm.lol 확인","v_hyper":"하드 캐리","s_hyper":"독무대","v_tactician":"전략가","s_tactician":"운영","v_fighter":"전투광","s_fighter":"딜","v_solid":"완벽 듀오","s_solid":"동등","v_passive":"버스","s_passive":"안전","v_struggle":"고전","s_struggle":"역부족","solo":"솔로","solo_sub":"듀오 없음","loading":"분석 중...","role_hyper":"캐리","role_lead":"리더","role_equal":"파트너","role_supp":"서포터","role_gap":"신입","q_surv":"생존","q_dmg":"딜량","q_obj":"철거","q_vis":"시야","q_bal":"밸런스","f_feed":"데스","f_afk":"딜부족","f_no_obj":"운영부족","f_blind":"시야부족","f_farm":"CS","f_ok":"굿","stats":"통계","combat":"전투","eco":"경제","vision":"시야","error_no_games":"없음","error_hint":"지역?"}
 }
 
 # --- CSS STYLES ---
@@ -124,10 +98,14 @@ st.markdown(
         border-radius: 0px; border-bottom: 2px solid #333; box-shadow: 0 20px 50px rgba(0,0,0,0.9);
     }}
     
+    /* --- TITRE ESTHÉTIQUE (BLUE/CYAN HEXTECH) --- */
     .main-title {{
-        font-size: 60px; font-weight: 900; color: white; text-align: center; margin-bottom: 20px;
+        font-size: 60px; font-weight: 900; text-align: center; margin-bottom: 20px;
         text-transform: uppercase; letter-spacing: -2px;
-        background: -webkit-linear-gradient(#eee, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        background: linear-gradient(90deg, #00c6ff, #0072ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        filter: drop-shadow(0 0 8px rgba(0, 114, 255, 0.3));
     }}
     
     .dpm-button-small {{
@@ -138,7 +116,6 @@ st.markdown(
     }}
     .dpm-button-small:hover {{ background-color: #2563eb; color: white !important; }}
 
-    /* Custom Input Layout */
     .input-row {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }}
     .input-label {{ font-size: 14px; font-weight: 700; color: #ddd; text-transform: uppercase; }}
 
@@ -189,7 +166,6 @@ st.markdown(f'<div class="main-title">{T["title"]}</div>', unsafe_allow_html=Tru
 # --- FORMULAIRE ---
 with st.form("search_form"):
     c1, c2, c3 = st.columns([3, 1, 1], gap="medium")
-    
     with c1:
         st.markdown(f"""
         <div class="input-row">
@@ -202,8 +178,7 @@ with st.form("search_form"):
         region_select = st.selectbox("Region", ["EUW1", "NA1", "KR", "EUN1", "TR1"], label_visibility="collapsed")
     with c3:
         st.markdown(f"<div style='margin-bottom:5px'><span class='input-label'>Mode</span></div>", unsafe_allow_html=True)
-        # Selectbox avec tous les modes
-        queue_label = st.selectbox("Mode", list(QUEUE_MAP.keys()), label_visibility="collapsed")
+        queue_type = st.selectbox("Mode", ["Solo/Duo", "Flex"], label_visibility="collapsed")
     st.markdown("<br>", unsafe_allow_html=True)
     submitted = st.form_submit_button(T["btn_scan"])
 
@@ -221,6 +196,7 @@ def get_champ_url(champ_name):
     return f"https://ddragon.leagueoflegends.com/cdn/{DD_VERSION}/img/champion/{clean}.png"
 
 def analyze_qualities(stats, lang_dict):
+    """Analyse avec Fallback pour éviter KeyError"""
     qualities, flaws = [], []
     
     if stats['kda'] > 3.0: qualities.append(lang_dict.get("q_surv", "High KDA"))
@@ -236,6 +212,7 @@ def analyze_qualities(stats, lang_dict):
         'gold': stats['gold'] / 400.0
     }
     worst_stat = min(scores, key=scores.get)
+    
     flaws_map = {
         'kda': lang_dict.get("f_feed", "Feed"),
         'dpm': lang_dict.get("f_afk", "Low Dmg"),
@@ -284,7 +261,7 @@ if submitted:
         name_raw, tag = riot_id_input.split("#")
         name_encoded = quote(name_raw)
         region = get_regions(region_select)
-        q_id = QUEUE_MAP[queue_label] # Récupère l'ID depuis le nom du mode
+        q_id = 420 if queue_type == "Solo/Duo" else 440
         
         with st.spinner(T["loading"]):
             try:
@@ -369,7 +346,7 @@ if submitted:
                 s_me = best_duo['my_stats_vs']
                 s_duo = best_duo['stats']
                 
-                # --- CALCUL V33 ---
+                # --- CALCUL V32 FAIR PLAY ---
                 def calc_score(s):
                     kda = s['kda'] / g
                     dpm = s['dpm'] / g
@@ -399,15 +376,15 @@ if submitted:
 
                 if state == "BOOSTED_HARD":
                     header_color = "#ff4444"
-                    title_text = T.get("v_gap", "STRUGGLE")
-                    sub_text = T.get("s_gap", "{target} < {duo}").format(target=target_name, duo=duo_name)
+                    title_text = T.get("v_struggle", "STRUGGLE")
+                    sub_text = T.get("s_struggle", "{target} < {duo}").format(target=target_name, duo=duo_name)
                     role_me_key, role_me_color = "role_gap", "color-red"
                     role_duo_key, role_duo_color = "role_hyper", "color-gold"
 
                 elif state == "BOOSTED_SOFT":
                     header_color = "#FFA500"
-                    title_text = T.get("v_supp", "SUPPORT")
-                    sub_text = T.get("s_supp", "{target} helps").format(target=target_name, duo=duo_name)
+                    title_text = T.get("v_passive", "PASSIVE")
+                    sub_text = T.get("s_passive", "{target} follows").format(target=target_name, duo=duo_name)
                     role_me_key, role_me_color = "role_supp", "color-orange"
                     role_duo_key, role_duo_color = "role_lead", "color-blue"
 
@@ -420,8 +397,8 @@ if submitted:
 
                 elif state == "BOOSTER_SOFT":
                     header_color = "#00BFFF"
-                    title_text = T.get("v_lead", "LEADER")
-                    sub_text = T.get("s_lead", "{target} leads").format(target=target_name, duo=duo_name)
+                    title_text = T.get("v_tactician", "TACTICIAN")
+                    sub_text = T.get("s_tactician", "{target} leads").format(target=target_name)
                     role_me_key, role_me_color = "role_lead", "color-blue"
                     role_duo_key, role_duo_color = "role_supp", "color-orange"
 
