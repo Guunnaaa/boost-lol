@@ -9,7 +9,7 @@ import concurrent.futures
 import threading
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V60", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V61", layout="wide")
 
 # --- API KEY ---
 try:
@@ -20,6 +20,7 @@ except FileNotFoundError:
 
 # --- ASSETS & CONSTANTS ---
 BACKGROUND_IMAGE_URL = "https://media.discordapp.net/attachments/1065027576572518490/1179469739770630164/face_tiled.jpg?ex=657a90f2&is=65681bf2&hm=123"
+DD_VERSION = "13.24.1" # Valeur par défaut temporaire
 
 QUEUE_MAP = {
     "Ranked Solo/Duo": 420,
@@ -34,7 +35,7 @@ ROLE_ICONS = {
     "BOTTOM": "🏹 ADC", "UTILITY": "🩹 SUPP", "UNKNOWN": "❓ FILL"
 }
 
-# --- CSS MODERNE (HEXTECH UI) ---
+# --- CSS MODERNE (HEXTECH UI V2) ---
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap');
@@ -45,15 +46,19 @@ st.markdown(f"""
         background-size: 150px; background-repeat: repeat; background-attachment: fixed;
     }}
     
+    /* RECENTRAGE ET MARGES */
     .block-container {{
-        max-width: 1400px !important; padding: 2rem !important;
+        max-width: 1400px !important; 
+        padding-top: 3rem !important; /* Plus d'espace en haut */
+        padding-bottom: 3rem !important;
         background: rgba(12, 12, 12, 0.95); backdrop-filter: blur(15px);
         border-radius: 15px; border: 1px solid #333; box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+        margin-top: 20px !important;
     }}
 
     /* TITRE */
     .main-title {{
-        font-size: 55px; font-weight: 900; text-align: center; margin-bottom: 10px;
+        font-size: 55px; font-weight: 900; text-align: center; margin-bottom: 30px; margin-top: 10px;
         background: linear-gradient(90deg, #00c6ff, #0072ff);
         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         filter: drop-shadow(0 0 10px rgba(0, 114, 255, 0.5)); text-transform: uppercase;
@@ -77,15 +82,22 @@ st.markdown(f"""
     .b-blue {{ background: rgba(0, 191, 255, 0.15); color: #00BFFF; border: 1px solid #00BFFF; }}
     .b-gold {{ background: rgba(255, 215, 0, 0.15); color: #FFD700; border: 1px solid #FFD700; }}
 
-    /* STATS GRID */
-    .stat-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }}
-    .stat-item {{ background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; }}
+    /* STATS GRID AVEC DIFF */
+    .stat-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; margin-bottom: 20px; }}
+    .stat-item {{ background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; text-align: left; }}
+    .stat-val-container {{ display: flex; align-items: center; gap: 8px; }}
     .stat-val {{ font-size: 18px; font-weight: 700; color: white; }}
-    .stat-lbl {{ font-size: 11px; color: #888; text-transform: uppercase; }}
+    .stat-lbl {{ font-size: 11px; color: #888; text-transform: uppercase; margin-top: 4px; }}
     
+    /* DIFFERENCES VERT/ROUGE */
+    .stat-diff {{ font-size: 12px; font-weight: 700; padding: 2px 4px; border-radius: 4px; }}
+    .pos {{ color: #00ff99; background: rgba(0,255,153,0.1); }} 
+    .neg {{ color: #ff4444; background: rgba(255,68,68,0.1); }}
+    .neutral {{ color: #666; }}
+
     /* VERDICT BANNER */
     .verdict-box {{
-        text-align: center; padding: 30px; border-radius: 16px; margin: 20px 0;
+        text-align: center; padding: 30px; border-radius: 16px; margin: 20px 0 30px 0;
         background: rgba(0,0,0,0.4); border: 2px solid #333;
     }}
     
@@ -149,24 +161,52 @@ def get_champ_url(champ_name):
 def determine_playstyle(stats, role):
     """Détermine des badges basés sur les stats par minute"""
     badges = []
-    
     # Badges positifs
     if stats['kda'] >= 4.0: badges.append(("🛡️ KDA Player", "b-gold"))
     if stats['vis_min'] >= 2.0 or (role == "UTILITY" and stats['vis_min'] >= 2.5): badges.append(("👁️ Oracle", "b-blue")) 
     if stats['kp'] >= 0.65: badges.append(("🤝 Teamplayer", "b-green"))
-    
     # Badges agressifs / Carry
     if stats['dmg_min'] >= 800: badges.append(("⚔️ 1v9 Machine", "b-red"))
     if stats['solokills'] >= 2.5: badges.append(("🩸 Duelist", "b-red"))
     if stats['obj'] >= 5000: badges.append(("🏰 Breacher", "b-gold"))
-    
-    # Badges négatifs (subtils)
+    # Badges négatifs
     if stats['kda'] < 1.5: badges.append(("👻 Grey Screen", "b-red"))
     if stats['vis_min'] < 0.4 and role != "ADC": badges.append(("🕶️ Blind", "b-red"))
     if stats['dmg_min'] < 300 and role not in ["UTILITY", "JUNGLE"]: badges.append(("💤 AFK Farm", "b-blue"))
 
     if not badges: badges.append(("⚖️ Standard", "b-blue"))
     return badges[:3] 
+
+# --- FONCTION GRAPHIQUE ---
+def create_radar(data_list, names, colors, title=None, height=300, show_legend=True):
+    categories = ['Combat (DPM)', 'Gold', 'Vision', 'Objectifs', 'Survie (KDA)']
+    fig = go.Figure()
+
+    for i, data in enumerate(data_list):
+        fig.add_trace(go.Scatterpolar(
+            r=data,
+            theta=categories,
+            fill='toself',
+            name=names[i],
+            line_color=colors[i],
+            opacity=0.6 if len(data_list) > 1 else 0.8,
+            marker=dict(size=4)
+        ))
+
+    fig.update_layout(
+        polar=dict(
+            radialaxis=dict(visible=True, range=[0, 100], showticklabels=False, linecolor='rgba(255,255,255,0.2)', gridcolor='rgba(255,255,255,0.1)'),
+            angularaxis=dict(linecolor='rgba(255,255,255,0.2)', gridcolor='rgba(255,255,255,0.1)', tickfont=dict(color='#ccc', size=10))
+        ),
+        showlegend=show_legend,
+        legend=dict(font=dict(color='white'), orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        margin=dict(l=40, r=40, t=30 if title else 10, b=30),
+        height=height,
+        title=dict(text=title, x=0.5, y=0.95, font=dict(color='white', size=14)) if title else None
+    )
+    return fig
 
 # --- API ---
 @st.cache_data(ttl=600)
@@ -319,16 +359,11 @@ if submitted:
                 # --- SCORE D'IMPACT V60 ---
                 def get_impact_score(s, role):
                     score = 0
-                    # KDA (Max 5 pts)
                     score += min(5, s['kda']) 
-                    # Participation (Max 4 pts)
                     score += (s['kp'] * 4)
-                    # Vision (Max 3 pts, boost pour supp)
                     vis_target = 2.0 if role == "UTILITY" else 1.0
                     score += min(3, (s['vis_min'] / vis_target) * 2)
-                    # Dégâts (Max 4 pts, sauf supp)
                     if role != "UTILITY": score += min(4, s['dmg_min'] / 700)
-                    # Objectifs (Max 4 pts)
                     obj_score = (s['obj'] / 5000) + (s['towers'] * 0.5)
                     score += min(4, obj_score)
                     return score
@@ -351,7 +386,7 @@ if submitted:
                 # AUTO SCROLL
                 components.html(f"<script>window.parent.document.querySelector('.verdict-box').scrollIntoView({{behavior:'smooth'}});</script>", height=0)
 
-                # UI
+                # UI VERDICT
                 st.markdown(f"""
                 <div class="verdict-box" style="border-color:{color}">
                     <div style="font-size:45px; font-weight:900; color:{color}; margin-bottom:10px;">{title}</div>
@@ -359,52 +394,70 @@ if submitted:
                     <div style="margin-top:15px; color:#888; font-weight:600;">{g} Games ensemble • {winrate}% Winrate</div>
                 </div>
                 """, unsafe_allow_html=True)
+
+                # PREPARATION DONNEES GRAPHIQUES
+                def norm(val, max_v): return min(100, (val / max_v) * 100)
+                data_me_norm = [norm(avg_me['dmg_min'], 1000), norm(avg_me['gold_min'], 600), norm(avg_me['vis_min'], 2.5), norm(avg_me['obj'], 8000), norm(avg_me['kda'], 5)]
+                data_duo_norm = [norm(avg_duo['dmg_min'], 1000), norm(avg_duo['gold_min'], 600), norm(avg_duo['vis_min'], 2.5), norm(avg_duo['obj'], 8000), norm(avg_duo['kda'], 5)]
+
+                # GRAPHIQUE CENTRAL COMPARATIF
+                fig_comp = create_radar([data_me_norm, data_duo_norm], [target_name, duo_name], ['#00c6ff', '#ff0055'], height=350)
+                st.plotly_chart(fig_comp, use_container_width=True, config={'displayModeBar': False})
                 
+                # COLONNES JOUEURS
                 col1, col2 = st.columns(2, gap="large")
-                
                 badges_me = determine_playstyle(avg_me, role_me)
                 badges_duo = determine_playstyle(avg_duo, role_duo)
                 
-                # RADAR CHART DATA
-                categories = ['Combat (DPM)', 'Gold', 'Vision', 'Objectifs', 'Survie (KDA)']
-                def norm(val, max_v): return min(100, (val / max_v) * 100)
-                
-                # Normalisation pour le graph
-                data_me = [norm(avg_me['dmg_min'], 1000), norm(avg_me['gold_min'], 600), norm(avg_me['vis_min'], 2.5), norm(avg_me['obj'], 8000), norm(avg_me['kda'], 5)]
-                data_duo = [norm(avg_duo['dmg_min'], 1000), norm(avg_duo['gold_min'], 600), norm(avg_duo['vis_min'], 2.5), norm(avg_duo['obj'], 8000), norm(avg_duo['kda'], 5)]
-                
-                # GRAPH
-                fig = go.Figure()
-                fig.add_trace(go.Scatterpolar(r=data_me, theta=categories, fill='toself', name=target_name, line_color='#00c6ff'))
-                fig.add_trace(go.Scatterpolar(r=data_duo, theta=categories, fill='toself', name=duo_name, line_color='#ff0055'))
-                fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), showlegend=True, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'))
-
-                def display_player(name, champs, stats, badges, role_icon):
+                def display_player_card(name, champs, stats, badges, role_icon, diff_stats, color_theme, chart_data):
                     badges_html = "".join([f"<span class='badge {b[1]}'>{b[0]}</span>" for b in badges])
-                    champs_html = ""
-                    for c in champs: champs_html += f"<img src='{get_champ_url(c)}' style='width:50px; border-radius:50%; border:2px solid #333; margin:2px;'>"
+                    champs_html = "".join([f"<img src='{get_champ_url(c)}' style='width:50px; border-radius:50%; border:2px solid #333; margin:2px;'>" for c in champs])
                     
+                    # Fonction interne pour générer une ligne de stat avec diff
+                    def stat_line(label, value, diff_val, is_percent=False, is_kda=False):
+                        val_str = f"{int(value*100)}%" if is_percent else (f"{value:.2f}" if is_kda else (f"{int(value/1000)}k" if value > 1000 else f"{int(value)}"))
+                        
+                        diff_html = ""
+                        if diff_val > 0: diff_html = f"<span class='stat-diff pos'>+{diff_val:.1f}</span>"
+                        elif diff_val < 0: diff_html = f"<span class='stat-diff neg'>{diff_val:.1f}</span>"
+                        else: diff_html = f"<span class='stat-diff neutral'>=</span>"
+
+                        return f"""<div class="stat-item">
+                            <div class="stat-val-container"><div class="stat-val">{val_str}</div>{diff_html}</div>
+                            <div class="stat-lbl">{label}</div>
+                        </div>"""
+
+                    stat_grid_html = f"""<div class="stat-grid">
+                        {stat_line("KDA", stats['kda'], diff_stats['kda'], is_kda=True)}
+                        {stat_line("KP", stats['kp'], diff_stats['kp']*100, is_percent=True)}
+                        {stat_line("DPM", stats['dmg_min'], diff_stats['dmg_min'])}
+                        {stat_line("VIS/M", stats['vis_min'], diff_stats['vis_min'])}
+                        {stat_line("OBJ DMG", stats['obj'], diff_stats['obj'])}
+                        {stat_line("GOLD/M", stats['gold_min'], diff_stats['gold_min'])}
+                    </div>"""
+
                     st.markdown(f"""
-                    <div class="player-card">
+                    <div class="player-card" style="border-top: 3px solid {color_theme};">
                         <div class="player-name">{name}</div>
                         <div class="player-sub">{role_icon}</div>
                         <div style="margin:10px 0;">{badges_html}</div>
                         <div style="margin-bottom:15px;">{champs_html}</div>
-                        <div class="stat-grid">
-                            <div class="stat-item"><div class="stat-val">{stats['kda']}</div><div class="stat-lbl">KDA</div></div>
-                            <div class="stat-item"><div class="stat-val">{int(stats['kp']*100)}%</div><div class="stat-lbl">KP</div></div>
-                            <div class="stat-item"><div class="stat-val">{int(stats['dmg_min'])}</div><div class="stat-lbl">DPM</div></div>
-                            <div class="stat-item"><div class="stat-val">{int(stats['vis_min'])}</div><div class="stat-lbl">VIS/M</div></div>
-                            <div class="stat-item"><div class="stat-val">{int(stats['obj']/1000)}k</div><div class="stat-lbl">OBJ</div></div>
-                            <div class="stat-item"><div class="stat-val">{int(stats['gold_min'])}</div><div class="stat-lbl">GOLD/M</div></div>
-                        </div>
+                        {stat_grid_html}
                     </div>
                     """, unsafe_allow_html=True)
+                    # Petit graph individuel
+                    fig_indiv = create_radar([chart_data], [name], [color_theme], height=200, show_legend=False)
+                    st.plotly_chart(fig_indiv, use_container_width=True, config={'displayModeBar': False})
 
-                with col1: display_player(target_name, top_champs_me, avg_me, badges_me, ROLE_ICONS.get(role_me, "UNK"))
-                with col2: display_player(duo_name, top_champs_duo, avg_duo, badges_duo, ROLE_ICONS.get(role_duo, "UNK"))
-                
-                st.plotly_chart(fig, use_container_width=True)
+
+                # Calcul des différences pour l'affichage
+                diff_me = {k: avg_me[k] - avg_duo[k] for k in avg_me if isinstance(avg_me[k], (int, float))}
+                diff_duo = {k: avg_duo[k] - avg_me[k] for k in avg_duo if isinstance(avg_duo[k], (int, float))}
+
+                with col1:
+                    display_player_card(target_name, top_champs_me, avg_me, badges_me, ROLE_ICONS.get(role_me, "UNK"), diff_me, '#00c6ff', data_me_norm)
+                with col2:
+                    display_player_card(duo_name, top_champs_duo, avg_duo, badges_duo, ROLE_ICONS.get(role_duo, "UNK"), diff_duo, '#ff0055', data_duo_norm)
 
             else:
                 st.markdown("<br>", unsafe_allow_html=True)
