@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components # C'est cette ligne qui manquait !
 import requests
 import time
 from urllib.parse import quote
@@ -7,7 +8,7 @@ import concurrent.futures
 import threading
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V49", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V50", layout="wide")
 
 # --- API KEY ---
 try:
@@ -20,6 +21,14 @@ except FileNotFoundError:
 BACKGROUND_IMAGE_URL = "https://media.discordapp.net/attachments/1065027576572518490/1179469739770630164/face_tiled.jpg?ex=657a90f2&is=65681bf2&hm=123"
 DD_VERSION = "13.24.1"
 
+# --- AUTO-UPDATE VERSION ---
+@st.cache_data(ttl=3600)
+def get_dd_version():
+    try: return requests.get("https://ddragon.leagueoflegends.com/api/versions.json").json()[0]
+    except: return "14.23.1"
+
+DD_VERSION = get_dd_version()
+
 # --- QUEUE MAP ---
 QUEUE_MAP = {
     "Ranked Solo/Duo": 420,
@@ -29,14 +38,6 @@ QUEUE_MAP = {
     "ARAM": 450,
     "Arena": 1700
 }
-
-# --- AUTO-UPDATE VERSION ---
-@st.cache_data(ttl=3600)
-def get_dd_version():
-    try: return requests.get("https://ddragon.leagueoflegends.com/api/versions.json").json()[0]
-    except: return "14.23.1"
-
-DD_VERSION = get_dd_version()
 
 # --- TRADUCTIONS ---
 TRANSLATIONS = {
@@ -52,7 +53,7 @@ TRANSLATIONS = {
         "loading": "Analyse tactique en cours...",
         "role_hyper": "CARRY", "role_lead": "MENEUR", "role_equal": "PARTENAIRE", "role_supp": "SOUTIEN", "role_gap": "ROOKIE",
         "q_surv": "Injouable (KDA)", "q_dmg": "Gros Dégâts", "q_obj": "Destructeur", "q_vis": "Contrôle Map", "q_bal": "Polyvalent", "q_supp": "Excellent Support",
-        "f_feed": "Meurt trop souvent", "f_afk": "Dégâts insuffisants", "f_no_obj": "Ignore les objectifs", "f_blind": "Vision insuffisante", "f_farm": "Farm insuffisant",
+        "f_feed": "Meurt trop souvent", "f_afk": "Dégâts faibles", "f_no_obj": "Ignore objectifs", "f_blind": "Vision faible", "f_farm": "Farm faible", "f_ok": "Solide",
         "stats": "STATS", "combat": "COMBAT", "eco": "ÉCONOMIE", "vision": "VISION & MAP",
         "error_no_games": "Aucune partie trouvée.", "error_hint": "Vérifie la région ou le mode de jeu."
     },
@@ -67,12 +68,12 @@ TRANSLATIONS = {
         "solo": "SOLO PLAYER", "solo_sub": "No recurring partner found.",
         "loading": "Analyzing...", "role_hyper": "CARRY", "role_lead": "LEADER", "role_equal": "PARTNER", "role_supp": "SUPPORT", "role_gap": "ROOKIE",
         "q_surv": "Unkillable", "q_dmg": "Heavy Hitter", "q_obj": "Destroyer", "q_vis": "Map Control", "q_bal": "Balanced", "q_supp": "Great Support",
-        "f_feed": "Too fragile", "f_afk": "Low Dmg", "f_no_obj": "No Objs", "f_blind": "Blind", "f_farm": "Low Farm",
+        "f_feed": "Too fragile", "f_afk": "Low Dmg", "f_no_obj": "No Objs", "f_blind": "Blind", "f_farm": "Low Farm", "f_ok": "Solid",
         "stats": "STATS", "combat": "COMBAT", "eco": "ECONOMY", "vision": "VISION",
         "error_no_games": "No games found.", "error_hint": "Check Region."
     },
-    "ES": {"title":"Analista LoL","btn_scan":"ANALIZAR","placeholder":"Ejemplo: Ibai#EUW","label_id":"Riot ID","dpm_btn":"Ver dpm.lol","v_hyper":"MVP TOTAL","s_hyper":"Domina a {duo}","v_tactician":"ESTRATEGA","s_tactician":"Macro para {duo}","v_fighter":"GLADIADOR","s_fighter":"Daño","v_solid":"DUO SOLIDO","s_solid":"Sinergia con {duo}","v_passive":"PASIVO","s_passive":"Seguro","v_struggle":"DIFICULTAD","s_struggle":"Sufre vs {duo}","solo":"SOLO","solo_sub":"Sin duo","loading":"Cargando...","role_hyper":"CARRY","role_lead":"LIDER","role_equal":"SOCIO","role_supp":"APOYO","role_gap":"NOVATO","q_surv":"Inmortal","q_dmg":"Daño","q_obj":"Torres","q_vis":"Vision","q_bal":"Balance","q_supp":"Support","f_feed":"Muere","f_afk":"Poco daño","f_no_obj":"Sin obj","f_blind":"Ciego","f_farm":"Farm","stats":"STATS","combat":"COMBATE","eco":"ECONOMIA","vision":"VISION","error_no_games":"Error","error_hint":"Region?"},
-    "KR": {"title":"LoL 듀오 분석","btn_scan":"분석 시작","placeholder":"예: Hide on bush#KR1","label_id":"Riot ID","dpm_btn":"dpm.lol 확인","v_hyper":"하드 캐리","s_hyper":"{target} > {duo}","v_tactician":"전략가","s_tactician":"운영","v_fighter":"전투광","s_fighter":"딜","v_solid":"완벽 듀오","s_solid":"{target} & {duo}","v_passive":"버스","s_passive":"안전","v_struggle":"고전","s_struggle":"역부족","solo":"솔로","solo_sub":"듀오 없음","loading":"분석 중...","role_hyper":"캐리","role_lead":"리더","role_equal":"파트너","role_supp":"서포터","role_gap":"신입","q_surv":"생존","q_dmg":"딜량","q_obj":"철거","q_vis":"시야","q_bal":"밸런스","q_supp":"서폿","f_feed":"데스","f_afk":"딜부족","f_no_obj":"운영부족","f_blind":"시야부족","f_farm":"CS","stats":"통계","combat":"전투","eco":"경제","vision":"시야","error_no_games":"없음","error_hint":"지역?"}
+    "ES": {"title":"Analista LoL","btn_scan":"ANALIZAR","placeholder":"Ejemplo: Ibai#EUW","label_id":"Riot ID","dpm_btn":"Ver dpm.lol","v_hyper":"MVP TOTAL","s_hyper":"Domina a {duo}","v_tactician":"ESTRATEGA","s_tactician":"Macro para {duo}","v_fighter":"GLADIADOR","s_fighter":"Daño","v_solid":"DUO SOLIDO","s_solid":"Sinergia con {duo}","v_passive":"PASIVO","s_passive":"Seguro","v_struggle":"DIFICULTAD","s_struggle":"Sufre vs {duo}","solo":"SOLO","solo_sub":"Sin duo","loading":"Cargando...","role_hyper":"CARRY","role_lead":"LIDER","role_equal":"SOCIO","role_supp":"APOYO","role_gap":"NOVATO","q_surv":"Inmortal","q_dmg":"Daño","q_obj":"Torres","q_vis":"Vision","q_bal":"Balance","q_supp":"Support","f_feed":"Muere","f_afk":"Poco daño","f_no_obj":"Sin obj","f_blind":"Ciego","f_farm":"Farm","f_ok":"Bien","stats":"STATS","combat":"COMBATE","eco":"ECONOMIA","vision":"VISION","error_no_games":"Error","error_hint":"Region?"},
+    "KR": {"title":"LoL 듀오 분석","btn_scan":"분석 시작","placeholder":"예: Hide on bush#KR1","label_id":"Riot ID","dpm_btn":"dpm.lol 확인","v_hyper":"하드 캐리","s_hyper":"{target} > {duo}","v_tactician":"전략가","s_tactician":"운영","v_fighter":"전투광","s_fighter":"딜","v_solid":"완벽 듀오","s_solid":"{target} & {duo}","v_passive":"버스","s_passive":"안전","v_struggle":"고전","s_struggle":"역부족","solo":"솔로","solo_sub":"듀오 없음","loading":"분석 중...","role_hyper":"캐리","role_lead":"리더","role_equal":"파트너","role_supp":"서포터","role_gap":"신입","q_surv":"생존","q_dmg":"딜량","q_obj":"철거","q_vis":"시야","q_bal":"밸런스","q_supp":"서폿","f_feed":"데스","f_afk":"딜부족","f_no_obj":"운영부족","f_blind":"시야부족","f_farm":"CS","f_ok":"굿","stats":"통계","combat":"전투","eco":"경제","vision":"시야","error_no_games":"없음","error_hint":"지역?"}
 }
 
 # --- MAP DRAPEAUX ---
@@ -142,7 +143,11 @@ st.markdown(f'<div class="main-title">{T["title"]}</div>', unsafe_allow_html=Tru
 with st.form("search_form"):
     c1, c2, c3 = st.columns([3, 1, 1], gap="small")
     with c1:
-        st.markdown(f"""<div class="input-row"><span class="input-label">{T['label_id']}</span><a href="https://dpm.lol" target="_blank" class="dpm-button-small">{T['dpm_btn']}</a></div>""", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class="input-row">
+            <span class="input-label">{T['label_id']}</span>
+            <a href="https://dpm.lol" target="_blank" class="dpm-button-small">{T['dpm_btn']}</a>
+        </div>""", unsafe_allow_html=True)
         riot_id_input = st.text_input("HiddenLabel", placeholder=T["placeholder"], label_visibility="collapsed")
     with c2:
         st.markdown(f"<div style='margin-bottom:5px'><span class='input-label'>Region</span></div>", unsafe_allow_html=True)
@@ -165,39 +170,32 @@ def safe_format(text, target, duo):
     except: return text
 
 def analyze_qualities_ruthless(stats, role, lang_dict):
-    """Analyse stricte qui force TOUJOURS un défaut"""
-    qualities = []
+    """Analyse stricte (V49)"""
+    qualities, flaws = [], []
     
-    # --- QUALITÉS (VALEURS ABSOLUES) ---
+    # QUALITÉS (Seuils Hauts)
     if stats['kda'] > 3.5: qualities.append(lang_dict.get("q_surv", "High KDA"))
     if stats['obj'] > 5000: qualities.append(lang_dict.get("q_obj", "Obj Dmg"))
     if stats['dpm'] > 750: qualities.append(lang_dict.get("q_dmg", "High Dmg"))
     if stats['vis'] > 35: qualities.append(lang_dict.get("q_vis", "Vision"))
     
-    # --- DÉFAUT FORCÉ (MAILLON FAIBLE) ---
-    # On normalise toutes les stats pour trouver la "moins bonne"
-    # (Même si elles sont toutes bonnes, l'une est forcément inférieure aux autres)
-    
+    # DÉFAUT FORCÉ (Maillon faible)
     scores = {
-        'kda': stats['kda'] / 3.0,   # KDA attendu ~3.0
-        'vis': stats['vis'] / 30.0   # Vision attendue ~30
+        'kda': stats['kda'] / 3.0,
+        'vis': stats['vis'] / 30.0
     }
     
-    # Ajout conditionnel des stats selon rôle pour le défaut
     if role != "UTILITY":
-        scores['dpm'] = stats['dpm'] / 600.0  # DPM attendu ~600
-        scores['gold'] = stats['gold'] / 400.0 # Gold/min attendu ~400
+        scores['dpm'] = stats['dpm'] / 600.0
+        scores['gold'] = stats['gold'] / 400.0
     
     if role != "JUNGLE" and role != "UTILITY":
-        scores['obj'] = stats['obj'] / 3000.0 # Obj attendu ~3000
-    
+        scores['obj'] = stats['obj'] / 3000.0
     if role == "JUNGLE":
-        scores['obj'] = stats['obj'] / 5000.0 # Jungler doit faire plus
+        scores['obj'] = stats['obj'] / 5000.0
         
-    # On prend le minimum absolu parmi les scores pertinents
     worst_stat = min(scores, key=scores.get)
     
-    # Mapping
     flaws_map = {
         'kda': lang_dict.get("f_feed", "Feed"),
         'dpm': lang_dict.get("f_afk", "Low Dmg"),
@@ -207,8 +205,6 @@ def analyze_qualities_ruthless(stats, role, lang_dict):
     }
     
     flaw = flaws_map.get(worst_stat, "Unknown")
-    
-    # Qualité par défaut
     q = qualities[0] if qualities else lang_dict.get("q_bal", "Balanced")
     if role == "UTILITY" and q == lang_dict.get("q_bal"): q = lang_dict.get("q_supp", "Support")
     
@@ -321,6 +317,7 @@ if submitted:
                                             d['my_stats_vs'][k] += my_s[k]
                     except: pass 
 
+            # VERDICT
             st.markdown("<div id='result'></div>", unsafe_allow_html=True)
             best_duo = None
             max_g = 0
@@ -400,9 +397,6 @@ if submitted:
                 </div>""", unsafe_allow_html=True)
 
                 col_left, col_right = st.columns(2, gap="large")
-                
-                stats_me = {'kda': avg_f(s_me, 'kda'), 'dpm': avg(s_me, 'dpm'), 'vis': avg(s_me, 'vis'), 'obj': avg(s_me, 'obj'), 'gold': avg(s_me, 'gold')}
-                stats_duo = {'kda': avg_f(s_duo, 'kda'), 'dpm': avg(s_duo, 'dpm'), 'vis': avg(s_duo, 'vis'), 'obj': avg(s_duo, 'obj'), 'gold': avg(s_duo, 'gold')}
                 qual, flaw = analyze_qualities_ruthless(stats_me, main_role_me, T)
                 qual_d, flaw_d = analyze_qualities_ruthless(stats_duo, main_role_duo, T)
 
