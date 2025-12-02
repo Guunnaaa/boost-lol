@@ -3,9 +3,10 @@ import requests
 import time
 from urllib.parse import quote
 from collections import Counter
+import concurrent.futures # C'est ça le secret de la vitesse
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Investigator V23", layout="wide")
+st.set_page_config(page_title="LoL Duo Investigator V25 (Turbo)", layout="wide")
 
 # --- API KEY ---
 try:
@@ -38,12 +39,12 @@ st.markdown(
     
     /* WIDE CONTAINER */
     .block-container {{
-        max-width: 1400px !important; /* EXTRA LARGE */
+        max-width: 1400px !important;
         padding: 2rem !important;
         margin: auto !important;
         background: rgba(12, 12, 12, 0.96);
         backdrop-filter: blur(20px);
-        border-radius: 0px; /* Full width feel */
+        border-radius: 0px;
         border-bottom: 2px solid #333;
         box-shadow: 0 20px 50px rgba(0,0,0,0.9);
     }}
@@ -72,27 +73,17 @@ st.markdown(
     .player-name {{ font-size: 36px; font-weight: 900; color: white; margin-bottom: 5px; }}
     .player-role {{ font-size: 18px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }}
     
-    /* ROLES COLORS */
     .role-driver {{ color: #FFD700; }}
     .role-pass {{ color: #ff4444; }}
     .role-equal {{ color: #00ff99; }}
 
     /* CHAMPION ICONS */
-    .champ-row {{
-        display: flex; justify-content: center; gap: 20px; margin-bottom: 30px;
-    }}
-    .champ-img {{
-        width: 80px; height: 80px; border-radius: 50%; 
-        border: 3px solid #444; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-        transition: transform 0.2s;
-    }}
+    .champ-row {{ display: flex; justify-content: center; gap: 20px; margin-bottom: 30px; }}
+    .champ-img {{ width: 80px; height: 80px; border-radius: 50%; border: 3px solid #444; transition: transform 0.2s; }}
     .champ-img:hover {{ transform: scale(1.1); border-color: white; }}
 
-    /* STAT ROWS (CLEAN LIST) */
-    .stat-row {{
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
-    }}
+    /* STAT ROWS */
+    .stat-row {{ display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }}
     .stat-label {{ font-size: 16px; color: #aaa; font-weight: 600; }}
     .stat-value {{ font-size: 22px; color: white; font-weight: 800; }}
     .stat-diff {{ font-size: 13px; font-weight: 600; margin-left: 10px; }}
@@ -101,11 +92,7 @@ st.markdown(
     .neutral {{ color: #666; }}
 
     /* VERDICT BANNER */
-    .verdict-banner {{
-        text-align: center; padding: 40px; margin-bottom: 50px;
-        border-radius: 20px; background: rgba(0,0,0,0.3);
-        border: 2px solid #333;
-    }}
+    .verdict-banner {{ text-align: center; padding: 40px; margin-bottom: 50px; border-radius: 20px; background: rgba(0,0,0,0.3); border: 2px solid #333; }}
 
     /* BUTTON */
     .stButton > button {{
@@ -117,7 +104,6 @@ st.markdown(
     }}
     .stButton > button:hover {{ transform: translateY(-2px); box-shadow: 0 10px 30px rgba(255,0,85,0.4); }}
     
-    /* UTILS */
     p, label {{ color: #eee !important; }}
     </style>
     """, unsafe_allow_html=True
@@ -133,14 +119,12 @@ with st.form("search_form"):
     with c2:
         region_select = st.selectbox("Region", ["EUW1", "NA1", "KR", "EUN1", "TR1"])
     
-    submitted = st.form_submit_button("🚀 LANCER L'ANALYSE")
+    submitted = st.form_submit_button("🚀 LANCER L'ANALYSE (TURBO)")
 
 
 # --- FONCTIONS ---
 def get_champ_url(champ_name):
-    # Sécurité si le nom est vide
     if not champ_name: return "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Poro_0.jpg"
-    
     clean = champ_name.replace(" ", "").replace("'", "").replace(".", "")
     if clean == "Wukong": clean = "MonkeyKing"
     if clean == "RenataGlasc": clean = "Renata"
@@ -148,8 +132,6 @@ def get_champ_url(champ_name):
     return f"https://ddragon.leagueoflegends.com/cdn/{DD_VERSION}/img/champion/{clean}.png"
 
 def render_stat_row(label, val, diff, unit=""):
-    """Affiche une ligne de stat propre"""
-    # Gestion des couleurs de diff
     if diff > 0:
         diff_html = f"<span class='stat-diff pos'>+{round(diff, 1)}{unit}</span>"
     elif diff < 0:
@@ -157,7 +139,6 @@ def render_stat_row(label, val, diff, unit=""):
     else:
         diff_html = f"<span class='stat-diff neutral'>=</span>"
 
-    # Affichage valeur
     val_display = f"{val}{unit}"
     if isinstance(val, int) and val > 1000:
         val_display = f"{val/1000:.1f}k"
@@ -172,7 +153,23 @@ def render_stat_row(label, val, diff, unit=""):
     </div>
     """, unsafe_allow_html=True)
 
-# --- LOGIQUE ---
+# --- CACHED FUNCTIONS ---
+@st.cache_data(ttl=600)
+def get_puuid_from_api(name, tag, region, api_key):
+    url = f"https://{region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{name}/{tag}?api_key={api_key}"
+    return requests.get(url)
+
+@st.cache_data(ttl=600)
+def get_matches_from_api(puuid, region, api_key):
+    url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue=420&start=0&count=20&api_key={api_key}"
+    return requests.get(url)
+
+# Pas de cache ici car on va paralléliser cette fonction
+def fetch_match_detail(match_id, region, api_key):
+    url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/{match_id}?api_key={api_key}"
+    return requests.get(url).json()
+
+# --- LOGIQUE PRINCIPALE ---
 if submitted:
     
     def get_regions(region_code):
@@ -187,20 +184,17 @@ if submitted:
         name_encoded = quote(name_raw)
         region = get_regions(region_select)
         
-        # 1. API CALLS
+        # 1. API CALLS (Séquentiel - Rapide)
         with st.spinner('Connexion aux serveurs Riot...'):
             try:
-                # PUUID
-                url_acc = f"https://{region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{name_encoded}/{tag}?api_key={API_KEY}"
-                resp_acc = requests.get(url_acc)
+                resp_acc = get_puuid_from_api(name_encoded, tag, region, API_KEY)
                 if resp_acc.status_code != 200:
                     st.error(f"Joueur introuvable (Erreur {resp_acc.status_code})")
                     st.stop()
                 puuid = resp_acc.json().get("puuid")
 
-                # MATCHES
-                url_match = f"https://{region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue=420&start=0&count=20&api_key={API_KEY}"
-                match_ids = requests.get(url_match).json()
+                resp_matches = get_matches_from_api(puuid, region, API_KEY)
+                match_ids = resp_matches.json()
                 
                 if not match_ids:
                     st.warning("Aucune partie classée récente trouvée.")
@@ -209,74 +203,81 @@ if submitted:
                 st.error(f"Erreur API: {e}")
                 st.stop()
 
-            # 2. ANALYSIS LOOP
+            # 2. ANALYSIS LOOP (PARALLÉLISÉ - VITESSE TURBO)
             duo_data = {} 
-            progress_bar = st.progress(0)
             target_name = riot_id_input 
             
-            for i, match_id in enumerate(match_ids):
-                progress_bar.progress((i + 1) / len(match_ids))
+            # --- C'EST ICI QUE LA MAGIE OPÈRE ---
+            with st.spinner(f'Analyse SIMULTANÉE des 20 dernières parties... 🚀'):
                 
-                url_det = f"https://{region}.api.riotgames.com/lol/match/v5/matches/{match_id}?api_key={API_KEY}"
-                data = requests.get(url_det).json()
-                if 'info' not in data: continue
-                
-                participants = data['info']['participants']
-                
-                me = next((p for p in participants if p['puuid'] == puuid), None)
-                if me:
-                    target_name = me.get('riotIdGameName', name_raw)
+                # On utilise ThreadPoolExecutor pour lancer 10 requêtes en même temps
+                with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                    # On prépare les tâches
+                    future_to_match = {executor.submit(fetch_match_detail, m_id, region, API_KEY): m_id for m_id in match_ids}
                     
-                    # My Stats Wrapper
-                    my_s = {
-                        'kda': (me['kills'] + me['assists']) / max(1, me['deaths']),
-                        'dmg': me['totalDamageDealtToChampions'],
-                        'gold': me['goldEarned'],
-                        'vis': me['visionScore'],
-                        'obj': me.get('damageDealtToObjectives', 0),
-                        'towers': me.get('challenges', {}).get('turretTakedowns', 0),
-                        'champ': me['championName']
-                    }
-
-                    for p in participants:
-                        if p['teamId'] == me['teamId'] and p['puuid'] != puuid:
-                            full_id = f"{p.get('riotIdGameName')}#{p.get('riotIdTagLine')}"
+                    # On récupère les résultats au fur et à mesure
+                    for future in concurrent.futures.as_completed(future_to_match):
+                        try:
+                            data = future.result()
+                            if 'info' not in data: continue
                             
-                            if full_id not in duo_data:
-                                duo_data[full_id] = {
-                                    'name': p.get('riotIdGameName'),
-                                    'games': 0, 'wins': 0,
-                                    'stats': {'kda':0, 'dmg':0, 'gold':0, 'vis':0, 'obj':0, 'towers':0},
-                                    'my_stats_vs': {'kda':0, 'dmg':0, 'gold':0, 'vis':0, 'obj':0, 'towers':0},
-                                    'champs': [],      
-                                    'my_champs': []    
+                            participants = data['info']['participants']
+                            me = next((p for p in participants if p['puuid'] == puuid), None)
+                            
+                            if me:
+                                target_name = me.get('riotIdGameName', name_raw)
+                                
+                                # My Stats Wrapper
+                                my_s = {
+                                    'kda': (me['kills'] + me['assists']) / max(1, me['deaths']),
+                                    'dmg': me['totalDamageDealtToChampions'],
+                                    'gold': me['goldEarned'],
+                                    'vis': me['visionScore'],
+                                    'obj': me.get('damageDealtToObjectives', 0),
+                                    'towers': me.get('challenges', {}).get('turretTakedowns', 0),
+                                    'champ': me['championName']
                                 }
-                            
-                            d = duo_data[full_id]
-                            d['games'] += 1
-                            if p['win']: d['wins'] += 1
-                            d['champs'].append(p['championName'])
-                            d['my_champs'].append(my_s['champ'])
-                            
-                            # Accumulate
-                            d['stats']['kda'] += (p['kills'] + p['assists']) / max(1, p['deaths'])
-                            d['stats']['dmg'] += p['totalDamageDealtToChampions']
-                            d['stats']['gold'] += p['goldEarned']
-                            d['stats']['vis'] += p['visionScore']
-                            d['stats']['obj'] += p.get('damageDealtToObjectives', 0)
-                            d['stats']['towers'] += p.get('challenges', {}).get('turretTakedowns', 0)
-                            
-                            d['my_stats_vs']['kda'] += my_s['kda']
-                            d['my_stats_vs']['dmg'] += my_s['dmg']
-                            d['my_stats_vs']['gold'] += my_s['gold']
-                            d['my_stats_vs']['vis'] += my_s['vis']
-                            d['my_stats_vs']['obj'] += my_s['obj']
-                            d['my_stats_vs']['towers'] += my_s['towers']
-                            
-                time.sleep(0.05)
+
+                                for p in participants:
+                                    if p['teamId'] == me['teamId'] and p['puuid'] != puuid:
+                                        full_id = f"{p.get('riotIdGameName')}#{p.get('riotIdTagLine')}"
+                                        
+                                        if full_id not in duo_data:
+                                            duo_data[full_id] = {
+                                                'name': p.get('riotIdGameName'),
+                                                'games': 0, 'wins': 0,
+                                                'stats': {'kda':0, 'dmg':0, 'gold':0, 'vis':0, 'obj':0, 'towers':0},
+                                                'my_stats_vs': {'kda':0, 'dmg':0, 'gold':0, 'vis':0, 'obj':0, 'towers':0},
+                                                'champs': [],      
+                                                'my_champs': []    
+                                            }
+                                        
+                                        d = duo_data[full_id]
+                                        d['games'] += 1
+                                        if p['win']: d['wins'] += 1
+                                        d['champs'].append(p['championName'])
+                                        d['my_champs'].append(my_s['champ'])
+                                        
+                                        # Accumulate Duo Stats
+                                        d['stats']['kda'] += (p['kills'] + p['assists']) / max(1, p['deaths'])
+                                        d['stats']['dmg'] += p['totalDamageDealtToChampions']
+                                        d['stats']['gold'] += p['goldEarned']
+                                        d['stats']['vis'] += p['visionScore']
+                                        d['stats']['obj'] += p.get('damageDealtToObjectives', 0)
+                                        d['stats']['towers'] += p.get('challenges', {}).get('turretTakedowns', 0)
+                                        
+                                        # Accumulate My Stats (vs this Duo)
+                                        d['my_stats_vs']['kda'] += my_s['kda']
+                                        d['my_stats_vs']['dmg'] += my_s['dmg']
+                                        d['my_stats_vs']['gold'] += my_s['gold']
+                                        d['my_stats_vs']['vis'] += my_s['vis']
+                                        d['my_stats_vs']['obj'] += my_s['obj']
+                                        d['my_stats_vs']['towers'] += my_s['towers']
+                        except Exception as e:
+                            pass # On ignore les erreurs de connexion isolées
 
             # 3. FINAL PROCESSING
-            progress_bar.empty()
+            st.markdown("---")
             
             best_duo = None
             max_g = 0
@@ -297,17 +298,16 @@ if submitted:
                 s_duo = best_duo['stats']
                 
                 # PILLARS
-                # 1. Combat
                 score_combat_me = (s_me['kda'] * 2) + (s_me['dmg'] / 1000)
                 score_combat_duo = (s_duo['kda'] * 2) + (s_duo['dmg'] / 1000)
-                # 2. Eco
+                
                 score_eco_me = s_me['gold']
                 score_eco_duo = s_duo['gold']
-                # 3. Vision
+                
                 score_vis_me = s_me['vis']
                 score_vis_duo = s_duo['vis']
-                # 4. Obj
-                score_obj_me = s_me['obj'] + (s_me['towers'] * 2000) # Towers worth 2k dmg score
+                
+                score_obj_me = s_me['obj'] + (s_me['towers'] * 2000)
                 score_obj_duo = s_duo['obj'] + (s_duo['towers'] * 2000)
                 
                 def check_win(m, d):
@@ -329,14 +329,13 @@ if submitted:
                 
                 winrate = int((best_duo['wins']/g)*100)
 
-                # --- HEADER / VERDICT ---
+                # --- HEADER ---
                 st.markdown("<br>", unsafe_allow_html=True)
                 
                 if status == "BOOSTED":
                     header_color = "#ff4444"
                     title_text = "PASSENGER DETECTED"
                     sub_text = f"{target_name} is carried by {duo_name}"
-                    
                     if "http" in CLOWN_IMAGE_URL:
                         c1, c2, c3 = st.columns([1, 1, 1])
                         with c2: st.image(CLOWN_IMAGE_URL, use_column_width=True)
@@ -358,11 +357,9 @@ if submitted:
                 </div>
                 """, unsafe_allow_html=True)
 
-                # --- MAIN STATS SPLIT ---
+                # --- STATS SPLIT ---
+                col_left, col_mid, col_right = st.columns([10, 1, 10]) 
                 
-                col_left, col_mid, col_right = st.columns([10, 1, 10]) # Split with a gap
-                
-                # --- LEFT PANEL (ME) ---
                 with col_left:
                     st.markdown(f"""
                     <div class="player-panel">
@@ -374,15 +371,12 @@ if submitted:
                         </div>
                     """, unsafe_allow_html=True)
                     
-                    # Champs
                     top_champs = [c[0] for c in Counter(best_duo['my_champs']).most_common(3)]
                     html_champs = "<div class='champ-row'>"
-                    for ch in top_champs:
-                        html_champs += f"<img src='{get_champ_url(ch)}' class='champ-img'>"
+                    for ch in top_champs: html_champs += f"<img src='{get_champ_url(ch)}' class='champ-img'>"
                     html_champs += "</div>"
                     st.markdown(html_champs, unsafe_allow_html=True)
                     
-                    # Stats List
                     render_stat_row("KDA", avg_f(s_me, 'kda'), avg_f(s_me, 'kda') - avg_f(s_duo, 'kda'))
                     render_stat_row("Damage", avg(s_me, 'dmg'), avg(s_me, 'dmg') - avg(s_duo, 'dmg'))
                     render_stat_row("Gold", avg(s_me, 'gold'), avg(s_me, 'gold') - avg(s_duo, 'gold'))
@@ -390,9 +384,8 @@ if submitted:
                     render_stat_row("Obj Dmg", avg(s_me, 'obj'), avg(s_me, 'obj') - avg(s_duo, 'obj'))
                     render_stat_row("Towers", avg_f(s_me, 'towers'), avg_f(s_me, 'towers') - avg_f(s_duo, 'towers'))
 
-                    st.markdown("</div>", unsafe_allow_html=True) # Close panel
+                    st.markdown("</div>", unsafe_allow_html=True)
 
-                # --- RIGHT PANEL (DUO) ---
                 with col_right:
                     st.markdown(f"""
                     <div class="player-panel">
@@ -404,15 +397,12 @@ if submitted:
                         </div>
                     """, unsafe_allow_html=True)
                     
-                    # Champs
                     top_champs_duo = [c[0] for c in Counter(best_duo['champs']).most_common(3)]
                     html_champs_d = "<div class='champ-row'>"
-                    for ch in top_champs_duo:
-                        html_champs_d += f"<img src='{get_champ_url(ch)}' class='champ-img'>"
+                    for ch in top_champs_duo: html_champs_d += f"<img src='{get_champ_url(ch)}' class='champ-img'>"
                     html_champs_d += "</div>"
                     st.markdown(html_champs_d, unsafe_allow_html=True)
                     
-                    # Stats List (Inversed Diff)
                     render_stat_row("KDA", avg_f(s_duo, 'kda'), avg_f(s_duo, 'kda') - avg_f(s_me, 'kda'))
                     render_stat_row("Damage", avg(s_duo, 'dmg'), avg(s_duo, 'dmg') - avg(s_me, 'dmg'))
                     render_stat_row("Gold", avg(s_duo, 'gold'), avg(s_duo, 'gold') - avg(s_me, 'gold'))
@@ -420,7 +410,7 @@ if submitted:
                     render_stat_row("Obj Dmg", avg(s_duo, 'obj'), avg(s_duo, 'obj') - avg(s_me, 'obj'))
                     render_stat_row("Towers", avg_f(s_duo, 'towers'), avg_f(s_duo, 'towers') - avg_f(s_me, 'towers'))
 
-                    st.markdown("</div>", unsafe_allow_html=True) # Close panel
+                    st.markdown("</div>", unsafe_allow_html=True)
 
             else:
                 st.markdown("<br><br>", unsafe_allow_html=True)
