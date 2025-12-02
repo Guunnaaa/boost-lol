@@ -6,7 +6,7 @@ from collections import Counter
 import concurrent.futures
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Investigator V26", layout="wide")
+st.set_page_config(page_title="LoL Duo Investigator V27", layout="wide")
 
 # --- API KEY ---
 try:
@@ -18,7 +18,6 @@ except FileNotFoundError:
 # --- ASSETS ---
 BACKGROUND_IMAGE_URL = "https://media.discordapp.net/attachments/1065027576572518490/1179469739770630164/face_tiled.jpg?ex=657a90f2&is=65681bf2&hm=123"
 CLOWN_IMAGE_URL = "https://raw.githubusercontent.com/[YOUR_GITHUB_NAME]/[REPO_NAME]/main/clown.jpg"
-DD_VERSION = "13.24.1"
 
 # --- AUTO-UPDATE VERSION ---
 @st.cache_data(ttl=3600)
@@ -49,8 +48,7 @@ TRANSLATIONS = {
         "role_driver": "CHAUFFEUR",
         "role_pass": "PASSAGER",
         "role_equal": "PARTENAIRE",
-        "stats": "STATS DE",
-        "pillars": "Piliers de performance"
+        "stats": "STATS DE"
     },
     "EN": {
         "title": "LoL Duo Investigator",
@@ -69,8 +67,7 @@ TRANSLATIONS = {
         "role_driver": "DRIVER",
         "role_pass": "PASSENGER",
         "role_equal": "PARTNER",
-        "stats": "STATS FOR",
-        "pillars": "Performance Pillars"
+        "stats": "STATS FOR"
     },
     "ES": {
         "title": "Detector de Carritos LoL",
@@ -89,8 +86,7 @@ TRANSLATIONS = {
         "role_driver": "CONDUCTOR",
         "role_pass": "PASAJERO",
         "role_equal": "COMPAÑERO",
-        "stats": "ESTADÍSTICAS DE",
-        "pillars": "Pilares de rendimiento"
+        "stats": "ESTADÍSTICAS DE"
     },
     "KR": {
         "title": "LoL 듀오 분석기",
@@ -109,8 +105,7 @@ TRANSLATIONS = {
         "role_driver": "기사",
         "role_pass": "승객",
         "role_equal": "파트너",
-        "stats": "통계:",
-        "pillars": "성능 지표"
+        "stats": "통계:"
     }
 }
 
@@ -153,26 +148,26 @@ st.markdown(
         -webkit-text-fill-color: transparent;
     }}
     
-    /* --- NEW DPM BLUE BUTTON --- */
+    /* --- NEW DPM BUTTON STYLE (SMALL & DISCRETE) --- */
     .dpm-button {{
-        display: block;
-        width: 100%;
-        background-color: #2563eb; /* Bleu moderne */
-        color: white !important;
+        display: inline-block;
+        background-color: rgba(37, 99, 235, 0.15); /* Transparent Blue */
+        color: #60a5fa !important; /* Light Blue Text */
         text-align: center;
-        padding: 8px 12px;
-        border-radius: 8px;
+        padding: 6px 15px;
+        border-radius: 20px; /* Pill shape */
         text-decoration: none;
         font-weight: 600;
-        font-size: 14px;
+        font-size: 12px;
+        border: 1px solid #2563eb;
+        margin-top: 8px;
         transition: all 0.2s ease;
-        border: 1px solid #1d4ed8;
-        margin-top: 5px;
+        float: right; /* Aligned right under input */
     }}
     .dpm-button:hover {{
-        background-color: #1d4ed8;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        background-color: #2563eb;
+        color: white !important;
+        box-shadow: 0 0 10px rgba(37, 99, 235, 0.6);
     }}
 
     /* PANELS */
@@ -205,11 +200,11 @@ st.markdown(
     /* VERDICT */
     .verdict-banner {{ text-align: center; padding: 40px; margin-bottom: 50px; border-radius: 20px; background: rgba(0,0,0,0.3); border: 2px solid #333; }}
 
-    /* MAIN BUTTON STYLE */
+    /* --- MAIN ACTION BUTTON --- */
     .stButton > button {{
         width: 100%; height: 60px;
         background: linear-gradient(90deg, #ff0055, #ff2222);
-        color: white; font-size: 20px; font-weight: 800;
+        color: white; font-size: 24px; font-weight: 800;
         border: none; border-radius: 12px; text-transform: uppercase;
         transition: 0.2s; letter-spacing: 1px;
     }}
@@ -226,7 +221,7 @@ c_title, c_lang = st.columns([5, 1])
 with c_lang:
     selected_lang = st.selectbox("Language / Langue", ["FR", "EN", "ES", "KR"], label_visibility="collapsed")
 
-T = TRANSLATIONS[selected_lang] # Dictionnaire de la langue choisie
+T = TRANSLATIONS[selected_lang]
 
 st.markdown(f'<div class="main-title">{T["title"]}</div>', unsafe_allow_html=True)
 
@@ -235,12 +230,12 @@ with st.form("search_form"):
     c1, c2 = st.columns([4, 1], gap="medium")
     with c1:
         riot_id_input = st.text_input("Riot ID", placeholder=T["placeholder"])
-        # LE BOUTON BLEU DPM
+        # --- BOUTON DPM DISCRET ---
         st.markdown(f'<a href="https://dpm.lol" target="_blank" class="dpm-button">{T["dpm_btn"]}</a>', unsafe_allow_html=True)
     with c2:
         region_select = st.selectbox("Region", ["EUW1", "NA1", "KR", "EUN1", "TR1"])
     
-    # Bouton épuré
+    # Bouton principal
     submitted = st.form_submit_button(T["btn_scan"])
 
 
