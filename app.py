@@ -5,10 +5,9 @@ import time
 from urllib.parse import quote
 from collections import Counter
 import concurrent.futures
-import threading
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V45", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V46", layout="wide")
 
 # --- API KEY ---
 try:
@@ -42,34 +41,18 @@ QUEUE_MAP = {
 # --- TRADUCTIONS ---
 TRANSLATIONS = {
     "FR": {
-        "title": "LoL Duo Analyst",
-        "btn_scan": "LANCER L'ANALYSE",
-        "placeholder": "Exemple: Kameto#EUW",
-        "label_id": "Riot ID",
-        "dpm_btn": "🔗 Voir sur dpm.lol",
-        
-        # Verdicts
+        "title": "LoL Duo Analyst", "btn_scan": "LANCER L'ANALYSE", "placeholder": "Exemple: Kameto#EUW", "label_id": "Riot ID", "dpm_btn": "🔗 Voir sur dpm.lol",
         "v_hyper": "MVP TOTAL", "s_hyper": "{target} porte {duo} sur ses épaules (1v9)",
         "v_tactician": "MASTERMIND", "s_tactician": "{target} gagne la game pour {duo} grâce à la macro",
         "v_fighter": "GLADIATEUR", "s_fighter": "{target} fait les dégâts, {duo} prend les objectifs",
         "v_solid": "DUO FUSIONNEL", "s_solid": "Synergie parfaite entre {target} et {duo}",
         "v_passive": "EN RETRAIT", "s_passive": "{target} joue safe et laisse {duo} mener le jeu",
         "v_struggle": "EN DIFFICULTÉ", "s_struggle": "{target} peine à suivre le rythme imposé par {duo}",
-
         "solo": "LOUP SOLITAIRE", "solo_sub": "Aucun duo récurrent détecté sur 20 parties.",
         "loading": "Analyse tactique en cours...",
-        
         "role_hyper": "CARRY", "role_lead": "MENEUR", "role_equal": "PARTENAIRE", "role_supp": "SOUTIEN", "role_gap": "ROOKIE",
-        
-        # Qualités (PLUS CLAIRES)
-        "q_surv": "Injouable (KDA Élevé)",
-        "q_dmg": "Artilleur (Gros Dégâts)",
-        "q_obj": "Destructeur (Objectifs)",
-        "q_vis": "Oracle (Vision Map)",
-        "q_bal": "Polyvalent (Équilibré)",
-        
-        "f_feed": "Meurt trop souvent", "f_afk": "Dégâts trop faibles", "f_no_obj": "Ignore les objectifs", "f_blind": "Joue sans vision", "f_farm": "Farm insuffisant", "f_ok": "Solide (Aucun défaut)",
-        
+        "q_surv": "Injouable (KDA)", "q_dmg": "Gros Dégâts", "q_obj": "Destructeur", "q_vis": "Contrôle Map", "q_bal": "Polyvalent",
+        "f_feed": "Meurt trop", "f_afk": "Dégâts faibles", "f_no_obj": "Ignore objectifs", "f_blind": "Vision faible", "f_farm": "Farm faible", "f_ok": "Solide",
         "stats": "STATS", "combat": "COMBAT", "eco": "ÉCONOMIE", "vision": "VISION & MAP",
         "error_no_games": "Aucune partie trouvée.", "error_hint": "Vérifie la région ou le mode de jeu."
     },
@@ -83,14 +66,13 @@ TRANSLATIONS = {
         "v_struggle": "STRUGGLING", "s_struggle": "{target} can't keep up with {duo}",
         "solo": "SOLO PLAYER", "solo_sub": "No recurring partner found.",
         "loading": "Analyzing...", "role_hyper": "CARRY", "role_lead": "LEADER", "role_equal": "PARTNER", "role_supp": "SUPPORT", "role_gap": "ROOKIE",
-        "q_surv": "Unkillable (High KDA)", "q_dmg": "Heavy Hitter (DPM)", "q_obj": "Destroyer (Objectives)", "q_vis": "Oracle (Vision)", "q_bal": "Balanced",
+        "q_surv": "Unkillable", "q_dmg": "Heavy Hitter", "q_obj": "Destroyer", "q_vis": "Map Control", "q_bal": "Balanced",
         "f_feed": "Too fragile", "f_afk": "Low Dmg", "f_no_obj": "No Objs", "f_blind": "Blind", "f_farm": "Low Farm", "f_ok": "Solid",
         "stats": "STATS", "combat": "COMBAT", "eco": "ECONOMY", "vision": "VISION",
         "error_no_games": "No games found.", "error_hint": "Check Region."
     },
-    # ES & KR simplifiés
-    "ES": {"title":"Analista LoL","btn_scan":"ANALIZAR","placeholder":"Ejemplo: Ibai#EUW","label_id":"Riot ID","dpm_btn":"Ver dpm.lol","v_hyper":"MVP TOTAL","s_hyper":"Domina a {duo}","v_tactician":"ESTRATEGA","s_tactician":"Macro para {duo}","v_fighter":"GLADIADOR","s_fighter":"Daño","v_solid":"DUO SOLIDO","s_solid":"Sinergia con {duo}","v_passive":"PASIVO","s_passive":"Seguro","v_struggle":"DIFICULTAD","s_struggle":"Sufre vs {duo}","solo":"SOLO","solo_sub":"Sin duo","loading":"Cargando...","role_hyper":"CARRY","role_lead":"LIDER","role_equal":"SOCIO","role_supp":"APOYO","role_gap":"NOVATO","q_surv":"Inmortal (KDA)","q_dmg":"Daño (DPM)","q_obj":"Torres (Obj)","q_vis":"Vision","q_bal":"Balance","f_feed":"Muere","f_afk":"Poco daño","f_no_obj":"Sin obj","f_blind":"Ciego","f_farm":"Farm","f_ok":"Bien","stats":"STATS","combat":"COMBATE","eco":"ECONOMIA","vision":"VISION","error_no_games":"Error","error_hint":"Region?"},
-    "KR": {"title":"LoL 듀오 분석","btn_scan":"분석 시작","placeholder":"예: Hide on bush#KR1","label_id":"Riot ID","dpm_btn":"dpm.lol 확인","v_hyper":"하드 캐리","s_hyper":"{target} > {duo}","v_tactician":"전략가","s_tactician":"운영","v_fighter":"전투광","s_fighter":"딜","v_solid":"완벽 듀오","s_solid":"{target} & {duo}","v_passive":"버스","s_passive":"안전","v_struggle":"고전","s_struggle":"역부족","solo":"솔로","solo_sub":"듀오 없음","loading":"분석 중...","role_hyper":"캐리","role_lead":"리더","role_equal":"파트너","role_supp":"서포터","role_gap":"신입","q_surv":"생존 (KDA)","q_dmg":"딜량 (DPM)","q_obj":"철거 (Obj)","q_vis":"시야","q_bal":"밸런스","f_feed":"데스","f_afk":"딜부족","f_no_obj":"운영부족","f_blind":"시야부족","f_farm":"CS","f_ok":"굿","stats":"통계","combat":"전투","eco":"경제","vision":"시야","error_no_games":"없음","error_hint":"지역?"}
+    "ES": {"title":"Analista LoL","btn_scan":"ANALIZAR","placeholder":"Ejemplo: Ibai#EUW","label_id":"Riot ID","dpm_btn":"Ver dpm.lol","v_hyper":"MVP TOTAL","s_hyper":"Domina a {duo}","v_tactician":"ESTRATEGA","s_tactician":"Macro para {duo}","v_fighter":"GLADIADOR","s_fighter":"Daño","v_solid":"DUO SOLIDO","s_solid":"Sinergia con {duo}","v_passive":"PASIVO","s_passive":"Seguro","v_struggle":"DIFICULTAD","s_struggle":"Sufre vs {duo}","solo":"SOLO","solo_sub":"Sin duo","loading":"Cargando...","role_hyper":"CARRY","role_lead":"LIDER","role_equal":"SOCIO","role_supp":"APOYO","role_gap":"NOVATO","q_surv":"Inmortal","q_dmg":"Daño","q_obj":"Torres","q_vis":"Vision","q_bal":"Balance","f_feed":"Muere","f_afk":"Poco daño","f_no_obj":"Sin obj","f_blind":"Ciego","f_farm":"Farm","f_ok":"Bien","stats":"STATS","combat":"COMBATE","eco":"ECONOMIA","vision":"VISION","error_no_games":"Error","error_hint":"Region?"},
+    "KR": {"title":"LoL 듀오 분석","btn_scan":"분석 시작","placeholder":"예: Hide on bush#KR1","label_id":"Riot ID","dpm_btn":"dpm.lol 확인","v_hyper":"하드 캐리","s_hyper":"{target} > {duo}","v_tactician":"전략가","s_tactician":"운영","v_fighter":"전투광","s_fighter":"딜","v_solid":"완벽 듀오","s_solid":"{target} & {duo}","v_passive":"버스","s_passive":"안전","v_struggle":"고전","s_struggle":"역부족","solo":"솔로","solo_sub":"듀오 없음","loading":"분석 중...","role_hyper":"캐리","role_lead":"리더","role_equal":"파트너","role_supp":"서포터","role_gap":"신입","q_surv":"생존","q_dmg":"딜량","q_obj":"철거","q_vis":"시야","q_bal":"밸런스","f_feed":"데스","f_afk":"딜부족","f_no_obj":"운영부족","f_blind":"시야부족","f_farm":"CS","f_ok":"굿","stats":"통계","combat":"전투","eco":"경제","vision":"시야","error_no_games":"없음","error_hint":"지역?"}
 }
 
 # --- MAP DRAPEAUX ---
@@ -108,28 +90,38 @@ st.markdown(
     @font-face {{ font-family: 'Noto Color Emoji'; src: local('Noto Color Emoji'), default; }}
     .stApp {{ background-image: url("{BACKGROUND_IMAGE_URL}"); background-size: 150px; background-repeat: repeat; background-attachment: fixed; }}
     .block-container {{ max-width: 1400px !important; padding: 1rem !important; margin: auto !important; background: rgba(12, 12, 12, 0.96); backdrop-filter: blur(20px); border-radius: 0px; border-bottom: 2px solid #333; box-shadow: 0 20px 50px rgba(0,0,0,0.9); }}
+    
+    /* TITRE ADAPTATIF */
     .main-title {{ font-size: 40px; font-weight: 900; text-align: center; margin-bottom: 20px; text-transform: uppercase; letter-spacing: -1px; background: linear-gradient(90deg, #00c6ff, #0072ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 8px rgba(0, 114, 255, 0.4)); }}
     @media (min-width: 800px) {{ .main-title {{ font-size: 60px; }} }}
+    
     .dpm-button-small {{ display: flex; align-items: center; justify-content: center; background-color: rgba(37, 99, 235, 0.2); color: #60a5fa !important; height: 25px; border-radius: 4px; text-decoration: none; font-weight: 600; font-size: 11px; border: 1px solid #2563eb; width: fit-content; padding: 0 10px; }}
     .dpm-button-small:hover {{ background-color: #2563eb; color: white !important; }}
+    
     .input-row {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }}
     .input-label {{ font-size: 14px; font-weight: 700; color: #ddd; text-transform: uppercase; }}
     .stForm > div[data-testid="stFormEnterToSubmit"] {{ display: none; }}
+    
     .player-panel {{ background: rgba(255, 255, 255, 0.03); border-radius: 16px; padding: 15px; height: 100%; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 10px; }}
     .player-name {{ font-size: 24px; font-weight: 900; color: white; text-align: center; margin-bottom: 2px; }}
     @media (min-width: 800px) {{ .player-name {{ font-size: 32px; }} }}
+    
     .role-badge {{ font-size: 12px; font-weight: 700; color: #aaa; text-align: center; margin-bottom: 10px; letter-spacing: 1px; opacity: 0.8; }}
     .player-role {{ font-size: 14px; font-weight: 700; text-align: center; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; padding: 5px; border-radius: 4px; background: rgba(255,255,255,0.05); }}
+    
     .color-gold {{ color: #FFD700; border-color: #FFD700; }} .color-blue {{ color: #00BFFF; border-color: #00BFFF; }} .color-green {{ color: #00ff99; border-color: #00ff99; }} .color-orange {{ color: #FFA500; border-color: #FFA500; }} .color-red {{ color: #ff4444; border-color: #ff4444; }}
+    
     .stat-row {{ display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }}
     .stat-label {{ font-size: 12px; color: #888; font-weight: 600; }}
     .stat-value {{ font-size: 16px; color: white; font-weight: 700; }}
     .stat-diff {{ font-size: 11px; font-weight: 600; margin-left: 6px; padding: 2px 4px; border-radius: 3px; }}
     .pos {{ color: #00ff99; background: rgba(0,255,153,0.1); }} .neg {{ color: #ff4444; background: rgba(255,68,68,0.1); }} .neutral {{ color: #666; }}
+    
     .feedback-row {{ display: flex; gap: 5px; justify-content: center; margin-bottom: 15px; flex-wrap: wrap; }}
     .fb-box {{ padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; white-space: nowrap; }}
     .fb-good {{ background: rgba(0, 255, 153, 0.1); color: #00ff99; border: 1px solid #00ff99; }}
-    .fb-bad {{ background: rgba(255, 68, 68, 0.1); color: #ff6666; border: 1px solid #ff4444; }}
+    .fb-bad {{ background: rgba(255, 68, 68, 0.1); color: #ff6666; border: 1px solid #ff444; }}
+    
     .verdict-banner {{ text-align: center; padding: 20px; margin-bottom: 30px; border-radius: 16px; background: rgba(0,0,0,0.4); border: 1px solid #333; }}
     .champ-img {{ width: 45px; height: 45px; border-radius: 50%; border: 2px solid #444; margin: 0 2px; }}
     .stButton > button {{ width: 100%; height: 55px; background: linear-gradient(90deg, #ff0055, #ff2222) !important; color: white !important; font-size: 18px; font-weight: 800; border: none; border-radius: 8px; text-transform: uppercase; letter-spacing: 1px; -webkit-appearance: none; appearance: none; }}
@@ -152,20 +144,14 @@ st.markdown(f'<div class="main-title">{T["title"]}</div>', unsafe_allow_html=Tru
 # --- FORMULAIRE ---
 with st.form("search_form"):
     c1, c2, c3 = st.columns([3, 1, 1], gap="small")
-    
     with c1:
-        st.markdown(f"""
-        <div class="input-row">
-            <span class="input-label">{T['label_id']}</span>
-            <a href="https://dpm.lol" target="_blank" class="dpm-button-small">{T['dpm_btn']}</a>
-        </div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="input-row"><span class="input-label">{T['label_id']}</span><a href="https://dpm.lol" target="_blank" class="dpm-button-small">{T['dpm_btn']}</a></div>""", unsafe_allow_html=True)
         riot_id_input = st.text_input("HiddenLabel", placeholder=T["placeholder"], label_visibility="collapsed")
     with c2:
         st.markdown(f"<div style='margin-bottom:5px'><span class='input-label'>Region</span></div>", unsafe_allow_html=True)
         region_select = st.selectbox("Region", ["EUW1", "NA1", "KR", "EUN1", "TR1"], label_visibility="collapsed")
     with c3:
         st.markdown(f"<div style='margin-bottom:5px'><span class='input-label'>Mode</span></div>", unsafe_allow_html=True)
-        # Utilisation de list() pour le selectbox
         queue_label = st.selectbox("Mode", list(QUEUE_MAP.keys()), label_visibility="collapsed")
     st.markdown("<br>", unsafe_allow_html=True)
     submitted = st.form_submit_button(T["btn_scan"])
@@ -184,33 +170,23 @@ def get_champ_url(champ_name):
     return f"https://ddragon.leagueoflegends.com/cdn/{DD_VERSION}/img/champion/{clean}.png"
 
 def analyze_qualities(stats, lang_dict):
-    """Analyse avec Fallback pour éviter KeyError"""
     qualities, flaws = [], []
-    
-    # Qualités explicites
     if stats['kda'] > 3.0: qualities.append(lang_dict.get("q_surv", "High KDA"))
     if stats['obj'] > 5000: qualities.append(lang_dict.get("q_obj", "Obj Dmg"))
     if stats['dpm'] > 700: qualities.append(lang_dict.get("q_dmg", "High Dmg"))
     if stats['vis'] > 30: qualities.append(lang_dict.get("q_vis", "Vision"))
     
-    # Calcul défaut relatif
     scores = {
-        'kda': stats['kda'] / 3.0,
-        'dpm': stats['dpm'] / 500.0,
-        'vis': stats['vis'] / 25.0,
-        'obj': stats['obj'] / 3000.0,
+        'kda': stats['kda'] / 3.0, 'dpm': stats['dpm'] / 500.0,
+        'vis': stats['vis'] / 25.0, 'obj': stats['obj'] / 3000.0,
         'gold': stats['gold'] / 400.0
     }
     worst_stat = min(scores, key=scores.get)
-    
     flaws_map = {
-        'kda': lang_dict.get("f_feed", "Feed"),
-        'dpm': lang_dict.get("f_afk", "Low Dmg"),
-        'vis': lang_dict.get("f_blind", "No Vis"),
-        'obj': lang_dict.get("f_no_obj", "No Obj"),
+        'kda': lang_dict.get("f_feed", "Feed"), 'dpm': lang_dict.get("f_afk", "Low Dmg"),
+        'vis': lang_dict.get("f_blind", "No Vis"), 'obj': lang_dict.get("f_no_obj", "No Obj"),
         'gold': lang_dict.get("f_farm", "Low Farm")
     }
-    
     flaw = flaws_map.get(worst_stat, "Ok")
     q = qualities[0] if qualities else lang_dict.get("q_bal", "Balanced")
     return q, flaw
@@ -234,7 +210,6 @@ def get_matches_from_api(puuid, region, api_key, queue_id):
     url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue={queue_id}&start=0&count=20&api_key={api_key}"
     return requests.get(url)
 
-# Pas de cache pour la fonction threadée
 def fetch_match_detail(match_id, region, api_key):
     url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/{match_id}?api_key={api_key}"
     return requests.get(url).json()
@@ -252,7 +227,7 @@ if submitted:
         name_raw, tag = riot_id_input.split("#")
         name_encoded = quote(name_raw)
         region = get_regions(region_select)
-        q_id = QUEUE_MAP[queue_label] # ID du mode
+        q_id = QUEUE_MAP[queue_label]
         
         with st.spinner(T["loading"]):
             try:
@@ -265,15 +240,14 @@ if submitted:
                 match_ids = resp_matches.json()
                 if not match_ids:
                     st.warning(T['error_no_games'])
-                    st.info(T['error_hint'] + f" ({queue_label})")
+                    st.info(f"{T['error_hint']} ({queue_label})")
                     st.stop()
             except Exception as e:
                 st.error(f"API Error: {e}")
                 st.stop()
 
-            # ANALYSIS (THREAD SAFE)
+            # ANALYSIS
             duo_data = {} 
-            data_lock = threading.Lock() # Verrou de sécurité
             target_name = riot_id_input 
             
             with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
@@ -286,7 +260,6 @@ if submitted:
                         if duration_min < 5: continue 
                         participants = data['info']['participants']
                         me = next((p for p in participants if p['puuid'] == puuid), None)
-                        
                         if me:
                             target_name = me.get('riotIdGameName', name_raw)
                             def get_stats(p):
@@ -300,30 +273,27 @@ if submitted:
                                     'champ': p['championName']
                                 }
                             my_s = get_stats(me)
-                            
-                            # SECTION CRITIQUE
-                            with data_lock:
-                                for p in participants:
-                                    if p['teamId'] == me['teamId'] and p['puuid'] != puuid:
-                                        full_id = f"{p.get('riotIdGameName')}#{p.get('riotIdTagLine')}"
-                                        if full_id not in duo_data:
-                                            duo_data[full_id] = {
-                                                'name': p.get('riotIdGameName'), 'games': 0, 'wins': 0,
-                                                'stats': {'kda':0, 'dpm':0, 'gold':0, 'vis':0, 'obj':0, 'towers':0},
-                                                'my_stats_vs': {'kda':0, 'dpm':0, 'gold':0, 'vis':0, 'obj':0, 'towers':0},
-                                                'champs': [], 'my_champs': [], 'roles': [], 'my_roles': []    
-                                            }
-                                        d = duo_data[full_id]
-                                        d['games'] += 1
-                                        if p['win']: d['wins'] += 1
-                                        d['champs'].append(p['championName'])
-                                        d['my_champs'].append(my_s['champ'])
-                                        d['roles'].append(p.get('teamPosition', 'UNKNOWN'))
-                                        d['my_roles'].append(me.get('teamPosition', 'UNKNOWN'))
-                                        duo_s = get_stats(p)
-                                        for k in d['stats']:
-                                            d['stats'][k] += duo_s[k]
-                                            d['my_stats_vs'][k] += my_s[k]
+                            for p in participants:
+                                if p['teamId'] == me['teamId'] and p['puuid'] != puuid:
+                                    full_id = f"{p.get('riotIdGameName')}#{p.get('riotIdTagLine')}"
+                                    if full_id not in duo_data:
+                                        duo_data[full_id] = {
+                                            'name': p.get('riotIdGameName'), 'games': 0, 'wins': 0,
+                                            'stats': {'kda':0, 'dpm':0, 'gold':0, 'vis':0, 'obj':0, 'towers':0},
+                                            'my_stats_vs': {'kda':0, 'dpm':0, 'gold':0, 'vis':0, 'obj':0, 'towers':0},
+                                            'champs': [], 'my_champs': [], 'roles': [], 'my_roles': []    
+                                        }
+                                    d = duo_data[full_id]
+                                    d['games'] += 1
+                                    if p['win']: d['wins'] += 1
+                                    d['champs'].append(p['championName'])
+                                    d['my_champs'].append(my_s['champ'])
+                                    d['roles'].append(p.get('teamPosition', 'UNKNOWN'))
+                                    d['my_roles'].append(me.get('teamPosition', 'UNKNOWN'))
+                                    duo_s = get_stats(p)
+                                    for k in d['stats']:
+                                        d['stats'][k] += duo_s[k]
+                                        d['my_stats_vs'][k] += my_s[k]
                     except: pass 
 
             # VERDICT
@@ -381,20 +351,17 @@ if submitted:
                     role_me_key, role_me_color = "role_gap", "color-red"
                     role_duo_key, role_duo_color = "role_hyper", "color-gold"
                 elif state == "BOOSTED_SOFT":
-                    header_color = "#FFA500"
-                    title_text = T.get("v_passive")
+                    header_color, title_text = "#FFA500", T.get("v_passive")
                     sub_text = T.get("s_passive", "").format(target=target_name, duo=duo_name)
                     role_me_key, role_me_color = "role_supp", "color-orange"
                     role_duo_key, role_duo_color = "role_lead", "color-blue"
                 elif state == "BOOSTER_HARD":
-                    header_color = "#FFD700"
-                    title_text = T.get("v_hyper")
-                    sub_text = T.get("s_hyper", "").format(target=target_name)
+                    header_color, title_text = "#FFD700", T.get("v_hyper")
+                    sub_text = T.get("s_hyper", "").format(target=target_name, duo=duo_name)
                     role_me_key, role_me_color = "role_hyper", "color-gold"
                     role_duo_key, role_duo_color = "role_gap", "color-red"
                 elif state == "BOOSTER_SOFT":
-                    header_color = "#00BFFF"
-                    title_text = T.get("v_tactician")
+                    header_color, title_text = "#00BFFF", T.get("v_tactician")
                     sub_text = T.get("s_tactician", "").format(target=target_name, duo=duo_name)
                     role_me_key, role_me_color = "role_lead", "color-blue"
                     role_duo_key, role_duo_color = "role_supp", "color-orange"
