@@ -3,9 +3,10 @@ import streamlit.components.v1 as components
 import requests
 import pandas as pd
 import plotly.graph_objects as go
+from urllib.parse import quote
+from collections import Counter
 import concurrent.futures
 import threading
-from collections import Counter
 
 # --- CONFIGURATION ---
 st.set_page_config(page_title="LoL Duo Analyst V60", layout="wide")
@@ -20,7 +21,6 @@ except FileNotFoundError:
 # --- ASSETS & CONSTANTS ---
 BACKGROUND_IMAGE_URL = "https://media.discordapp.net/attachments/1065027576572518490/1179469739770630164/face_tiled.jpg?ex=657a90f2&is=65681bf2&hm=123"
 
-# Mapping des Queues
 QUEUE_MAP = {
     "Ranked Solo/Duo": 420,
     "Ranked Flex": 440,
@@ -29,13 +29,12 @@ QUEUE_MAP = {
     "Arena": 1700
 }
 
-# Icônes de Rôle
 ROLE_ICONS = {
     "TOP": "🛡️ TOP", "JUNGLE": "🌲 JUNGLE", "MIDDLE": "🧙 MID", 
     "BOTTOM": "🏹 ADC", "UTILITY": "🩹 SUPP", "UNKNOWN": "❓ FILL"
 }
 
-# --- CSS MODERNE ---
+# --- CSS MODERNE (HEXTECH UI) ---
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap');
@@ -57,21 +56,21 @@ st.markdown(f"""
         font-size: 55px; font-weight: 900; text-align: center; margin-bottom: 10px;
         background: linear-gradient(90deg, #00c6ff, #0072ff);
         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        filter: drop-shadow(0 0 10px rgba(0, 114, 255, 0.5));
+        filter: drop-shadow(0 0 10px rgba(0, 114, 255, 0.5)); text-transform: uppercase;
     }}
     
     /* CARTE JOUEUR */
     .player-card {{
         background: rgba(255, 255, 255, 0.03); border-radius: 16px; padding: 20px;
-        border: 1px solid rgba(255,255,255,0.05); text-align: center;
+        border: 1px solid rgba(255,255,255,0.05); text-align: center; height: 100%;
     }}
     .player-name {{ font-size: 28px; font-weight: 800; color: white; margin-bottom: 5px; }}
-    .player-sub {{ font-size: 14px; color: #aaa; font-weight: 600; letter-spacing: 1px; }}
+    .player-sub {{ font-size: 14px; color: #aaa; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }}
 
-    /* BADGES */
+    /* BADGES DE STYLE */
     .badge {{
         display: inline-block; padding: 4px 8px; border-radius: 4px; 
-        font-size: 11px; font-weight: 700; margin: 2px;
+        font-size: 11px; font-weight: 700; margin: 2px; text-transform: uppercase;
     }}
     .b-green {{ background: rgba(0, 255, 153, 0.15); color: #00ff99; border: 1px solid #00ff99; }}
     .b-red {{ background: rgba(255, 68, 68, 0.15); color: #ff6666; border: 1px solid #ff4444; }}
@@ -103,6 +102,9 @@ st.markdown(f"""
         text-transform: uppercase; transition: 0.3s;
     }}
     .stButton > button:hover {{ transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,0,60,0.4); }}
+    
+    /* HIDE INPUT LABEL */
+    .stTextInput > label {{ display: none; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -118,13 +120,13 @@ with st.form("search_form"):
             <span style="font-size:14px; font-weight:700; color:#ddd;">RIOT ID</span>
             <a href="https://dpm.lol" target="_blank" class="dpm-btn">🔗 Check dpm.lol</a>
         </div>""", unsafe_allow_html=True)
-        riot_id_input = st.text_input("HiddenLabel", placeholder="Ex: Kameto#EUW", label_visibility="collapsed")
+        riot_id_input = st.text_input("HiddenLabel", placeholder="Ex: Kameto#EUW")
     with c2:
         st.markdown("<span style='font-size:14px; font-weight:700; color:#ddd;'>RÉGION</span>", unsafe_allow_html=True)
-        region_select = st.selectbox("Région", ["EUW1", "NA1", "KR", "EUN1", "TR1"], label_visibility="collapsed")
+        region_select = st.selectbox("RegionLabel", ["EUW1", "NA1", "KR", "EUN1", "TR1"], label_visibility="collapsed")
     with c3:
         st.markdown("<span style='font-size:14px; font-weight:700; color:#ddd;'>MODE</span>", unsafe_allow_html=True)
-        queue_label = st.selectbox("Mode", list(QUEUE_MAP.keys()), label_visibility="collapsed")
+        queue_label = st.selectbox("ModeLabel", list(QUEUE_MAP.keys()), label_visibility="collapsed")
     
     st.markdown("<br>", unsafe_allow_html=True)
     submitted = st.form_submit_button("LANCER L'ANALYSE COMPLÈTE")
@@ -145,26 +147,26 @@ def get_champ_url(champ_name):
 
 # --- LOGIQUE SCORE & STYLE ---
 def determine_playstyle(stats, role):
+    """Détermine des badges basés sur les stats par minute"""
     badges = []
     
     # Badges positifs
     if stats['kda'] >= 4.0: badges.append(("🛡️ KDA Player", "b-gold"))
-    if stats['vis_min'] >= 2.0: badges.append(("👁️ Oracle", "b-blue")) # >2 vision/min c'est énorme
+    if stats['vis_min'] >= 2.0 or (role == "UTILITY" and stats['vis_min'] >= 2.5): badges.append(("👁️ Oracle", "b-blue")) 
     if stats['kp'] >= 0.65: badges.append(("🤝 Teamplayer", "b-green"))
     
-    # Badges agressifs
+    # Badges agressifs / Carry
     if stats['dmg_min'] >= 800: badges.append(("⚔️ 1v9 Machine", "b-red"))
-    if stats['solokills'] >= 3: badges.append(("🩸 Duelist", "b-red"))
+    if stats['solokills'] >= 2.5: badges.append(("🩸 Duelist", "b-red"))
+    if stats['obj'] >= 5000: badges.append(("🏰 Breacher", "b-gold"))
     
     # Badges négatifs (subtils)
     if stats['kda'] < 1.5: badges.append(("👻 Grey Screen", "b-red"))
-    if stats['vis_min'] < 0.5 and role == "UTILITY": badges.append(("🕶️ Blind Supp", "b-red"))
+    if stats['vis_min'] < 0.4 and role != "ADC": badges.append(("🕶️ Blind", "b-red"))
     if stats['dmg_min'] < 300 and role not in ["UTILITY", "JUNGLE"]: badges.append(("💤 AFK Farm", "b-blue"))
 
-    # Fallback
     if not badges: badges.append(("⚖️ Standard", "b-blue"))
-    
-    return badges[:3] # Max 3 badges
+    return badges[:3] 
 
 # --- API ---
 @st.cache_data(ttl=600)
@@ -227,13 +229,13 @@ if submitted:
                         if 'info' not in data: continue
                         info = data['info']
                         duration_min = info['gameDuration'] / 60
-                        if duration_min < 5: continue # Remake
+                        if duration_min < 5: continue 
                         
-                        me = next((p for p in info['participants'] if p['puuid'] == puuid), None)
+                        participants = info['participants']
+                        me = next((p for p in participants if p['puuid'] == puuid), None)
                         if not me: continue
                         target_name = me['riotIdGameName']
                         
-                        # Helper extraction stats
                         def extract_stats(p):
                             return {
                                 'kills': p['kills'], 'deaths': p['deaths'], 'assists': p['assists'],
@@ -241,7 +243,6 @@ if submitted:
                                 'gold': p['goldEarned'],
                                 'vis': p['visionScore'],
                                 'obj': p.get('damageDealtToObjectives', 0),
-                                'cc': p.get('timeCCingOthers', 0),
                                 'towers': p.get('turretTakedowns', 0),
                                 'kp': p.get('challenges', {}).get('killParticipation', 0),
                                 'solokills': p.get('challenges', {}).get('soloKills', 0),
@@ -253,46 +254,32 @@ if submitted:
                         my_s = extract_stats(me)
                         
                         with data_lock:
-                            for p in info['participants']:
+                            for p in participants:
                                 if p['teamId'] == me['teamId'] and p['puuid'] != puuid:
                                     full_id = f"{p.get('riotIdGameName')}#{p.get('riotIdTagLine')}"
-                                    
                                     if full_id not in duo_data:
                                         duo_data[full_id] = {
-                                            'name': p.get('riotIdGameName'),
-                                            'games': 0, 'wins': 0,
-                                            'champs': [], 'roles': [],
-                                            'stats_duo': [], 'stats_me': []
+                                            'name': p.get('riotIdGameName'), 'games': 0, 'wins': 0,
+                                            'champs': [], 'roles': [], 'stats_duo': [], 'stats_me': []
                                         }
-                                    
                                     d = duo_data[full_id]
                                     d['games'] += 1
                                     if p['win']: d['wins'] += 1
                                     d['champs'].append(p['championName'])
                                     d['roles'].append(p.get('teamPosition', 'UNKNOWN'))
                                     
-                                    # On stocke les stats brutes normalisées par minute pour moyenne ultérieure
-                                    duo_s = extract_stats(p)
-                                    
                                     # Normalisation minute
-                                    norm_duo = duo_s.copy()
-                                    norm_duo['dmg_min'] = duo_s['dmg'] / duration_min
-                                    norm_duo['gold_min'] = duo_s['gold'] / duration_min
-                                    norm_duo['vis_min'] = duo_s['vis'] / duration_min
-                                    
-                                    norm_me = my_s.copy()
-                                    norm_me['dmg_min'] = my_s['dmg'] / duration_min
-                                    norm_me['gold_min'] = my_s['gold'] / duration_min
-                                    norm_me['vis_min'] = my_s['vis'] / duration_min
-                                    
-                                    d['stats_duo'].append(norm_duo)
-                                    d['stats_me'].append(norm_me)
-
+                                    duo_s = extract_stats(p)
+                                    for s, norm in [(duo_s, d['stats_duo']), (my_s, d['stats_me'])]:
+                                        n = s.copy()
+                                        n['dmg_min'] = s['dmg'] / duration_min
+                                        n['gold_min'] = s['gold'] / duration_min
+                                        n['vis_min'] = s['vis'] / duration_min
+                                        norm.append(n)
                     except Exception: pass
 
             # 4. ANALYSE DU MEILLEUR DUO
             st.markdown("<div id='result'></div>", unsafe_allow_html=True)
-            
             best_duo = None
             max_g = 0
             for k, v in duo_data.items():
@@ -300,21 +287,20 @@ if submitted:
                     max_g = v['games']
                     best_duo = v
             
-            # --- AFFICHAGE ---
             if best_duo and max_g >= 2:
                 g = best_duo['games']
                 duo_name = best_duo['name']
                 winrate = int((best_duo['wins']/g)*100)
                 
-                # Rôle Principal
                 try: role_duo = Counter(best_duo['roles']).most_common(1)[0][0]
                 except: role_duo = "UNKNOWN"
+                try: role_me = Counter([x['role'] for x in best_duo['stats_me']]).most_common(1)[0][0]
+                except: role_me = "UNKNOWN"
                 
-                # Champs
                 top_champs_duo = [c[0] for c in Counter(best_duo['champs']).most_common(3)]
                 top_champs_me = [c[0] for c in Counter([x['champ'] for x in best_duo['stats_me']]).most_common(3)]
                 
-                # --- CALCUL MOYENNES ---
+                # CALCUL MOYENNES
                 def avg_stats(stat_list):
                     res = {}
                     keys = stat_list[0].keys()
@@ -326,51 +312,46 @@ if submitted:
                 avg_duo = avg_stats(best_duo['stats_duo'])
                 avg_me = avg_stats(best_duo['stats_me'])
                 
-                # --- CALCUL KDA ---
                 def calc_kda(s): return round((s['kills'] + s['assists']) / max(1, s['deaths']), 2)
                 avg_duo['kda'] = calc_kda(avg_duo)
                 avg_me['kda'] = calc_kda(avg_me)
 
-                # --- SCORE D'IMPACT (V60 - ULTRA FAIR) ---
-                # On compare selon le rôle du joueur
+                # --- SCORE D'IMPACT V60 ---
                 def get_impact_score(s, role):
                     score = 0
-                    # Base KDA (Max 4 pts)
-                    score += min(4, s['kda']) 
-                    # KP (Max 3 pts)
-                    score += (s['kp'] * 3)
-                    # Vision (Max 2 pts)
-                    if role == "UTILITY": score += min(2, s['vis_min'] / 1.5) # Support doit avoir > 1.5 vis/min
-                    else: score += min(1, s['vis_min'] / 0.8)
-                    # Dégâts (Max 3 pts)
-                    if role not in ["UTILITY"]: score += min(3, s['dmg_min'] / 800)
-                    # Objectifs (Max 3 pts)
-                    if role == "JUNGLE": score += min(3, s['obj'] / 6000)
-                    else: score += min(2, s['towers'])
-                    
+                    # KDA (Max 5 pts)
+                    score += min(5, s['kda']) 
+                    # Participation (Max 4 pts)
+                    score += (s['kp'] * 4)
+                    # Vision (Max 3 pts, boost pour supp)
+                    vis_target = 2.0 if role == "UTILITY" else 1.0
+                    score += min(3, (s['vis_min'] / vis_target) * 2)
+                    # Dégâts (Max 4 pts, sauf supp)
+                    if role != "UTILITY": score += min(4, s['dmg_min'] / 700)
+                    # Objectifs (Max 4 pts)
+                    obj_score = (s['obj'] / 5000) + (s['towers'] * 0.5)
+                    score += min(4, obj_score)
                     return score
 
-                score_me = get_impact_score(avg_me, avg_me.get('role', 'UNKNOWN')) # On prend le rôle moyen ? Non, simplifié
+                score_me = get_impact_score(avg_me, role_me)
                 score_duo = get_impact_score(avg_duo, role_duo)
-                
                 ratio = score_me / max(0.1, score_duo)
                 
-                # --- VERDICT ---
-                if ratio > 1.3: 
-                    title, color, sub = "MVP TOTAL", "#FFD700", f"{target_name} est bien meilleur que {duo_name}."
-                elif ratio > 1.1: 
-                    title, color, sub = "LEADER", "#00BFFF", f"{target_name} mène le jeu."
-                elif ratio < 0.7: 
-                    title, color, sub = "EN DIFFICULTÉ", "#ff4444", f"{target_name} se fait carry par {duo_name}."
+                if ratio > 1.35: 
+                    title, color, sub = "MVP TOTAL", "#FFD700", f"{target_name} est le carry indiscutable."
+                elif ratio > 1.15: 
+                    title, color, sub = "LEADER", "#00BFFF", f"{target_name} mène le jeu techniquement."
+                elif ratio < 0.75: 
+                    title, color, sub = "EN DIFFICULTÉ", "#ff4444", f"{target_name} a du mal à suivre {duo_name}."
                 elif ratio < 0.9: 
-                    title, color, sub = "SOUTIEN ACTIF", "#FFA500", f"{target_name} aide {duo_name} à gagner."
+                    title, color, sub = "SOUTIEN ACTIF", "#FFA500", f"{target_name} joue pour l'équipe."
                 else: 
-                    title, color, sub = "DUO FUSIONNEL", "#00ff99", "Synergie parfaite et impact égal."
+                    title, color, sub = "DUO FUSIONNEL", "#00ff99", "Synergie parfaite et impact équivalent."
 
-                # --- AUTO SCROLL ---
+                # AUTO SCROLL
                 components.html(f"<script>window.parent.document.querySelector('.verdict-box').scrollIntoView({{behavior:'smooth'}});</script>", height=0)
 
-                # --- UI RESULTAT ---
+                # UI
                 st.markdown(f"""
                 <div class="verdict-box" style="border-color:{color}">
                     <div style="font-size:45px; font-weight:900; color:{color}; margin-bottom:10px;">{title}</div>
@@ -379,70 +360,51 @@ if submitted:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # --- COLONNES COMPARATIVES ---
                 col1, col2 = st.columns(2, gap="large")
                 
-                # Badges
-                badges_me = determine_playstyle(avg_me, "UNKNOWN") # Rôle moyen non calculé ici pour simplicité
+                badges_me = determine_playstyle(avg_me, role_me)
                 badges_duo = determine_playstyle(avg_duo, role_duo)
                 
-                def display_player(name, champs, stats, badges, is_left):
-                    align = "left" if is_left else "right"
-                    # Badges HTML
+                # RADAR CHART DATA
+                categories = ['Combat (DPM)', 'Gold', 'Vision', 'Objectifs', 'Survie (KDA)']
+                def norm(val, max_v): return min(100, (val / max_v) * 100)
+                
+                # Normalisation pour le graph
+                data_me = [norm(avg_me['dmg_min'], 1000), norm(avg_me['gold_min'], 600), norm(avg_me['vis_min'], 2.5), norm(avg_me['obj'], 8000), norm(avg_me['kda'], 5)]
+                data_duo = [norm(avg_duo['dmg_min'], 1000), norm(avg_duo['gold_min'], 600), norm(avg_duo['vis_min'], 2.5), norm(avg_duo['obj'], 8000), norm(avg_duo['kda'], 5)]
+                
+                # GRAPH
+                fig = go.Figure()
+                fig.add_trace(go.Scatterpolar(r=data_me, theta=categories, fill='toself', name=target_name, line_color='#00c6ff'))
+                fig.add_trace(go.Scatterpolar(r=data_duo, theta=categories, fill='toself', name=duo_name, line_color='#ff0055'))
+                fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), showlegend=True, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'))
+
+                def display_player(name, champs, stats, badges, role_icon):
                     badges_html = "".join([f"<span class='badge {b[1]}'>{b[0]}</span>" for b in badges])
-                    
-                    # Champs HTML
                     champs_html = ""
-                    for c in champs:
-                        champs_html += f"<img src='{get_champ_url(c)}' style='width:50px; border-radius:50%; border:2px solid #333; margin:2px;'>"
+                    for c in champs: champs_html += f"<img src='{get_champ_url(c)}' style='width:50px; border-radius:50%; border:2px solid #333; margin:2px;'>"
                     
                     st.markdown(f"""
                     <div class="player-card">
                         <div class="player-name">{name}</div>
-                        <div style="margin-bottom:10px;">{badges_html}</div>
+                        <div class="player-sub">{role_icon}</div>
+                        <div style="margin:10px 0;">{badges_html}</div>
                         <div style="margin-bottom:15px;">{champs_html}</div>
                         <div class="stat-grid">
                             <div class="stat-item"><div class="stat-val">{stats['kda']}</div><div class="stat-lbl">KDA</div></div>
-                            <div class="stat-item"><div class="stat-val">{int(stats['kp']*100)}%</div><div class="stat-lbl">PARTICIPATION</div></div>
-                            <div class="stat-item"><div class="stat-val">{int(stats['dmg_min'])}</div><div class="stat-lbl">DMG/MIN</div></div>
-                            <div class="stat-item"><div class="stat-val">{int(stats['vis_min'])}</div><div class="stat-lbl">VISION/MIN</div></div>
-                            <div class="stat-item"><div class="stat-val">{int(stats['gold_min'])}</div><div class="stat-lbl">GOLD/MIN</div></div>
-                            <div class="stat-item"><div class="stat-val">{int(stats['obj'])}</div><div class="stat-lbl">OBJ DMG</div></div>
+                            <div class="stat-item"><div class="stat-val">{int(stats['kp']*100)}%</div><div class="stat-lbl">KP</div></div>
+                            <div class="stat-item"><div class="stat-val">{int(stats['dmg_min'])}</div><div class="stat-lbl">DPM</div></div>
+                            <div class="stat-item"><div class="stat-val">{int(stats['vis_min'])}</div><div class="stat-lbl">VIS/M</div></div>
+                            <div class="stat-item"><div class="stat-val">{int(stats['obj']/1000)}k</div><div class="stat-lbl">OBJ</div></div>
+                            <div class="stat-item"><div class="stat-val">{int(stats['gold_min'])}</div><div class="stat-lbl">GOLD/M</div></div>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
-                    
-                    # Radar Chart (Petit graph en dessous)
-                    categories = ['Combat', 'Gold', 'Vision', 'Obj', 'Survie']
-                    # Normalisation arbitraire pour le graph (0-100)
-                    val_combat = min(100, (stats['dmg_min']/1000)*100)
-                    val_gold = min(100, (stats['gold_min']/600)*100)
-                    val_vis = min(100, (stats['vis_min']/2.5)*100)
-                    val_obj = min(100, (stats['obj']/8000)*100)
-                    val_surv = min(100, (stats['kda']/5)*100)
-                    
-                    fig = go.Figure(data=go.Scatterpolar(
-                        r=[val_combat, val_gold, val_vis, val_obj, val_surv],
-                        theta=categories,
-                        fill='toself',
-                        line_color='#00c6ff' if is_left else '#ff0055',
-                        opacity=0.7
-                    ))
-                    fig.update_layout(
-                        polar=dict(radialaxis=dict(visible=False, range=[0, 100])),
-                        showlegend=False,
-                        margin=dict(l=20, r=20, t=20, b=20),
-                        height=200,
-                        paper_bgcolor='rgba(0,0,0,0)',
-                        plot_bgcolor='rgba(0,0,0,0)',
-                        font=dict(color='white')
-                    )
-                    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-                with col1:
-                    display_player(target_name, top_champs_me, avg_me, badges_me, True)
-                with col2:
-                    display_player(duo_name, top_champs_duo, avg_duo, badges_duo, False)
+                with col1: display_player(target_name, top_champs_me, avg_me, badges_me, ROLE_ICONS.get(role_me, "UNK"))
+                with col2: display_player(duo_name, top_champs_duo, avg_duo, badges_duo, ROLE_ICONS.get(role_duo, "UNK"))
+                
+                st.plotly_chart(fig, use_container_width=True)
 
             else:
                 st.markdown("<br>", unsafe_allow_html=True)
