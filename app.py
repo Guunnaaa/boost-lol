@@ -5,9 +5,10 @@ import time
 from urllib.parse import quote
 from collections import Counter
 import concurrent.futures
+import threading
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V41", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V39", layout="wide")
 
 # --- API KEY ---
 try:
@@ -36,21 +37,17 @@ TRANSLATIONS = {
         "placeholder": "Exemple: Kameto#EUW",
         "label_id": "Riot ID",
         "dpm_btn": "🔗 Voir sur dpm.lol",
-        
         "v_hyper": "MVP TOTAL", "s_hyper": "{target} porte {duo} sur ses épaules (1v9)",
         "v_tactician": "MASTERMIND", "s_tactician": "{target} gagne la game pour {duo} grâce à la macro",
         "v_fighter": "GLADIATEUR", "s_fighter": "{target} fait les dégâts, {duo} prend les objectifs",
         "v_solid": "DUO FUSIONNEL", "s_solid": "Synergie parfaite entre {target} et {duo}",
         "v_passive": "EN RETRAIT", "s_passive": "{target} joue safe et laisse {duo} mener le jeu",
         "v_struggle": "EN DIFFICULTÉ", "s_struggle": "{target} peine à suivre le rythme imposé par {duo}",
-
         "solo": "LOUP SOLITAIRE", "solo_sub": "Aucun duo récurrent détecté sur 20 parties.",
         "loading": "Analyse tactique en cours...",
-        
         "role_hyper": "CARRY", "role_lead": "MENEUR", "role_equal": "PARTENAIRE", "role_supp": "SOUTIEN", "role_gap": "ROOKIE",
         "q_surv": "Injouable (KDA)", "q_dmg": "Gros Dégâts", "q_obj": "Destructeur", "q_vis": "Contrôle Map", "q_bal": "Polyvalent",
         "f_feed": "Meurt trop", "f_afk": "Dégâts faibles", "f_no_obj": "Ignore objectifs", "f_blind": "Vision faible", "f_farm": "Farm faible", "f_ok": "Solide",
-        
         "stats": "STATS", "combat": "COMBAT", "eco": "ÉCONOMIE", "vision": "VISION & MAP",
         "error_no_games": "Aucune partie trouvée.", "error_hint": "Vérifie la région."
     },
@@ -77,7 +74,14 @@ TRANSLATIONS = {
 LANG_MAP = {"🇫🇷 FR": "FR", "🇺🇸 EN": "EN", "🇪🇸 ES": "ES", "🇰🇷 KR": "KR"}
 
 # --- ROLES MAPPING ---
-ROLE_ICONS = {"TOP": "🛡️ TOP", "JUNGLE": "🌲 JUNGLE", "MIDDLE": "🧙 MID", "BOTTOM": "🏹 ADC", "UTILITY": "🩹 SUPP"}
+ROLE_ICONS = {
+    "TOP": "🛡️ TOP",
+    "JUNGLE": "🌲 JUNGLE",
+    "MIDDLE": "🧙 MID",
+    "BOTTOM": "🏹 ADC",
+    "UTILITY": "🩹 SUPP",
+    "UNKNOWN": "❓ FILL"
+}
 
 # --- CSS STYLES ---
 st.markdown(
@@ -201,6 +205,7 @@ with st.form("search_form"):
 def get_champ_url(champ_name):
     if not champ_name: return "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Poro_0.jpg"
     clean = champ_name.replace(" ", "").replace("'", "").replace(".", "")
+    # Fallback pour persos récents ou noms chelous
     if clean.lower() == "wukong": clean = "MonkeyKing"
     if clean.lower() == "renataglasc": clean = "Renata"
     if clean.lower() == "nunu&willump": clean = "Nunu"
@@ -212,6 +217,7 @@ def get_champ_url(champ_name):
 
 def analyze_qualities(stats, lang_dict):
     qualities, flaws = [], []
+    
     if stats['kda'] > 3.0: qualities.append(lang_dict.get("q_surv", "High KDA"))
     if stats['obj'] > 5000: qualities.append(lang_dict.get("q_obj", "Obj Dmg"))
     if stats['dpm'] > 700: qualities.append(lang_dict.get("q_dmg", "High Dmg"))
@@ -251,6 +257,7 @@ def get_matches_from_api(puuid, region, api_key, queue_id):
     url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue={queue_id}&start=0&count=20&api_key={api_key}"
     return requests.get(url)
 
+# NON CACHÉ POUR THREADING
 def fetch_match_detail(match_id, region, api_key):
     url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/{match_id}?api_key={api_key}"
     return requests.get(url).json()
@@ -286,8 +293,9 @@ if submitted:
                 st.error(f"API Error: {e}")
                 st.stop()
 
-            # ANALYSIS
-            duo_data = {} 
+            # ANALYSIS - THREAD SAFE
+            duo_data = {}
+            data_lock = threading.Lock() # Le Verrou magique
             target_name = riot_id_input 
             
             with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
@@ -313,27 +321,31 @@ if submitted:
                                     'champ': p['championName']
                                 }
                             my_s = get_stats(me)
-                            for p in participants:
-                                if p['teamId'] == me['teamId'] and p['puuid'] != puuid:
-                                    full_id = f"{p.get('riotIdGameName')}#{p.get('riotIdTagLine')}"
-                                    if full_id not in duo_data:
-                                        duo_data[full_id] = {
-                                            'name': p.get('riotIdGameName'), 'games': 0, 'wins': 0,
-                                            'stats': {'kda':0, 'dpm':0, 'gold':0, 'vis':0, 'obj':0, 'towers':0},
-                                            'my_stats_vs': {'kda':0, 'dpm':0, 'gold':0, 'vis':0, 'obj':0, 'towers':0},
-                                            'champs': [], 'my_champs': [], 'roles': [], 'my_roles': []    
-                                        }
-                                    d = duo_data[full_id]
-                                    d['games'] += 1
-                                    if p['win']: d['wins'] += 1
-                                    d['champs'].append(p['championName'])
-                                    d['my_champs'].append(my_s['champ'])
-                                    d['roles'].append(p.get('teamPosition', 'UNKNOWN'))
-                                    d['my_roles'].append(my_s['role'])
-                                    duo_s = get_stats(p)
-                                    for k in d['stats']:
-                                        d['stats'][k] += duo_s[k]
-                                        d['my_stats_vs'][k] += my_s[k]
+                            
+                            # CRITIQUE : LE VERROU
+                            with data_lock:
+                                for p in participants:
+                                    if p['teamId'] == me['teamId'] and p['puuid'] != puuid:
+                                        full_id = f"{p.get('riotIdGameName')}#{p.get('riotIdTagLine')}"
+                                        if full_id not in duo_data:
+                                            duo_data[full_id] = {
+                                                'name': p.get('riotIdGameName'), 'games': 0, 'wins': 0,
+                                                'stats': {'kda':0, 'dpm':0, 'gold':0, 'vis':0, 'obj':0, 'towers':0},
+                                                'my_stats_vs': {'kda':0, 'dpm':0, 'gold':0, 'vis':0, 'obj':0, 'towers':0},
+                                                'champs': [], 'my_champs': [], 'roles': [], 'my_roles': []    
+                                            }
+                                        d = duo_data[full_id]
+                                        d['games'] += 1
+                                        if p['win']: d['wins'] += 1
+                                        d['champs'].append(p['championName'])
+                                        d['my_champs'].append(my_s['champ'])
+                                        d['roles'].append(p.get('teamPosition', 'UNKNOWN'))
+                                        d['my_roles'].append(me.get('teamPosition', 'UNKNOWN'))
+                                        
+                                        duo_s = get_stats(p)
+                                        for k in d['stats']:
+                                            d['stats'][k] += duo_s[k]
+                                            d['my_stats_vs'][k] += my_s[k]
                     except: pass 
 
             # VERDICT
@@ -360,12 +372,14 @@ if submitted:
                 s_me = best_duo['my_stats_vs']
                 s_duo = best_duo['stats']
                 
+                # --- CALCUL V32 FAIR PLAY ---
                 def calc_score(s, role):
                     kda = s['kda'] / g
                     dpm = s['dpm'] / g
                     obj = s['obj'] / g 
                     vis = s['vis'] / g
-                    obj_factor = 0.15 if role == "JUNGLE" else 0.35 
+                    # Nerf Jungle
+                    obj_factor = 0.15 if role == "JUNGLE" else 0.35
                     score = (kda * 150) + (dpm * 0.4) + (obj * obj_factor) + (vis * 15)
                     return score
 
@@ -381,36 +395,39 @@ if submitted:
 
                 winrate = int((best_duo['wins']/g)*100)
 
-                header_color, title_text, sub_text = "#00ff99", T.get("v_solid", "SOLID"), T.get("s_solid", "Equal")
+                # CONFIG AFFICHAGE
+                header_color = "#00ff99"
+                title_text = T.get("v_solid", "SOLID")
+                sub_text = T.get("s_solid", "Equal")
                 role_me_key, role_me_color = "role_equal", "color-green"
                 role_duo_key, role_duo_color = "role_equal", "color-green"
 
-                # CORRECTION DES .format() AVEC TOUTES LES VARIABLES
                 if state == "BOOSTED_HARD":
                     header_color = "#ff4444"
                     title_text = T.get("v_struggle")
-                    sub_text = T.get("s_struggle").format(target=target_name, duo=duo_name)
+                    sub_text = T.get("s_struggle", "").format(target=target_name, duo=duo_name)
                     role_me_key, role_me_color = "role_gap", "color-red"
                     role_duo_key, role_duo_color = "role_hyper", "color-gold"
                 elif state == "BOOSTED_SOFT":
                     header_color = "#FFA500"
                     title_text = T.get("v_passive")
-                    sub_text = T.get("s_passive").format(target=target_name, duo=duo_name)
+                    sub_text = T.get("s_passive", "").format(target=target_name, duo=duo_name)
                     role_me_key, role_me_color = "role_supp", "color-orange"
                     role_duo_key, role_duo_color = "role_lead", "color-blue"
                 elif state == "BOOSTER_HARD":
                     header_color = "#FFD700"
                     title_text = T.get("v_hyper")
-                    sub_text = T.get("s_hyper").format(target=target_name, duo=duo_name)
+                    sub_text = T.get("s_hyper", "").format(target=target_name, duo=duo_name)
                     role_me_key, role_me_color = "role_hyper", "color-gold"
                     role_duo_key, role_duo_color = "role_gap", "color-red"
                 elif state == "BOOSTER_SOFT":
                     header_color = "#00BFFF"
                     title_text = T.get("v_tactician")
-                    sub_text = T.get("s_tactician").format(target=target_name, duo=duo_name)
+                    sub_text = T.get("s_tactician", "").format(target=target_name, duo=duo_name)
                     role_me_key, role_me_color = "role_lead", "color-blue"
                     role_duo_key, role_duo_color = "role_supp", "color-orange"
 
+                # AUTO SCROLL
                 components.html(f"<script>window.parent.document.querySelector('.verdict-banner').scrollIntoView({{behavior:'smooth'}});</script>", height=0)
 
                 st.markdown(f"""
@@ -420,7 +437,7 @@ if submitted:
                     <div style="margin-top:15px; font-size:14px; color:#888;">{g} Games • {winrate}% Winrate</div>
                 </div>""", unsafe_allow_html=True)
 
-                col_left, col_right = st.columns(2, gap="small")
+                col_left, col_right = st.columns(2, gap="large")
                 
                 stats_me = {'kda': avg_f(s_me, 'kda'), 'dpm': avg(s_me, 'dpm'), 'vis': avg(s_me, 'vis'), 'obj': avg(s_me, 'obj'), 'gold': avg(s_me, 'gold')}
                 stats_duo = {'kda': avg_f(s_duo, 'kda'), 'dpm': avg(s_duo, 'dpm'), 'vis': avg(s_duo, 'vis'), 'obj': avg(s_duo, 'obj'), 'gold': avg(s_duo, 'gold')}
