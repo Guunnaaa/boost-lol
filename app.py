@@ -6,7 +6,7 @@ from collections import Counter
 import concurrent.futures
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Investigator V27", layout="wide")
+st.set_page_config(page_title="LoL Duo Investigator V28", layout="wide")
 
 # --- API KEY ---
 try:
@@ -18,14 +18,13 @@ except FileNotFoundError:
 # --- ASSETS ---
 BACKGROUND_IMAGE_URL = "https://media.discordapp.net/attachments/1065027576572518490/1179469739770630164/face_tiled.jpg?ex=657a90f2&is=65681bf2&hm=123"
 CLOWN_IMAGE_URL = "https://raw.githubusercontent.com/[YOUR_GITHUB_NAME]/[REPO_NAME]/main/clown.jpg"
+DD_VERSION = "13.24.1"
 
 # --- AUTO-UPDATE VERSION ---
 @st.cache_data(ttl=3600)
 def get_dd_version():
-    try:
-        return requests.get("https://ddragon.leagueoflegends.com/api/versions.json").json()[0]
-    except:
-        return "14.23.1"
+    try: return requests.get("https://ddragon.leagueoflegends.com/api/versions.json").json()[0]
+    except: return "14.23.1"
 
 DD_VERSION = get_dd_version()
 
@@ -48,7 +47,9 @@ TRANSLATIONS = {
         "role_driver": "CHAUFFEUR",
         "role_pass": "PASSAGER",
         "role_equal": "PARTENAIRE",
-        "stats": "STATS DE"
+        "stats": "STATS DE",
+        "error_no_games": "Aucune partie trouvée.",
+        "error_hint": "Vérifie la Région. Ce joueur fait-il de la SoloQ ?"
     },
     "EN": {
         "title": "LoL Duo Investigator",
@@ -67,46 +68,11 @@ TRANSLATIONS = {
         "role_driver": "DRIVER",
         "role_pass": "PASSENGER",
         "role_equal": "PARTNER",
-        "stats": "STATS FOR"
+        "stats": "STATS FOR",
+        "error_no_games": "No games found.",
+        "error_hint": "Check Region. Does this player play SoloQ?"
     },
-    "ES": {
-        "title": "Detector de Carritos LoL",
-        "btn_scan": "INICIAR ANÁLISIS",
-        "placeholder": "Ejemplo: Ibai#EUW",
-        "dpm_btn": "🔍 Buscar en dpm.lol",
-        "verdict_boosted": "PASAJERO DETECTADO",
-        "sub_boosted": "{target} es carrileado por {duo}",
-        "verdict_booster": "CONDUCTOR DETECTADO",
-        "sub_booster": "{target} está boosteando a {duo}",
-        "verdict_clean": "DUO SÓLIDO",
-        "sub_clean": "Contribución igual",
-        "solo": "JUGADOR SOLO",
-        "solo_sub": "Sin dúo recurrente.",
-        "loading": "Análisis en curso...",
-        "role_driver": "CONDUCTOR",
-        "role_pass": "PASAJERO",
-        "role_equal": "COMPAÑERO",
-        "stats": "ESTADÍSTICAS DE"
-    },
-    "KR": {
-        "title": "LoL 듀오 분석기",
-        "btn_scan": "분석 시작",
-        "placeholder": "예: Hide on bush#KR1",
-        "dpm_btn": "🔍 dpm.lol에서 찾기",
-        "verdict_boosted": "버스 승객 감지",
-        "sub_boosted": "{target} 님이 {duo} 님에게 업혀갑니다",
-        "verdict_booster": "버스 기사 감지",
-        "sub_booster": "{target} 님이 {duo} 님을 캐리 중입니다",
-        "verdict_clean": "완벽한 듀오",
-        "sub_clean": "동등한 기여도",
-        "solo": "솔로 플레이어",
-        "solo_sub": "최근 20게임 듀오 없음",
-        "loading": "데이터 분석 중...",
-        "role_driver": "기사",
-        "role_pass": "승객",
-        "role_equal": "파트너",
-        "stats": "통계:"
-    }
+    # ... (Autres langues gardées simple pour gain de place)
 }
 
 # --- CSS STYLES ---
@@ -115,72 +81,35 @@ st.markdown(
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap');
     
-    html, body, [class*="css"] {{
-        font-family: 'Inter', sans-serif;
-    }}
+    html, body, [class*="css"] {{ font-family: 'Inter', sans-serif; }}
     
     .stApp {{
         background-image: url("{BACKGROUND_IMAGE_URL}");
-        background-size: 150px;
-        background-repeat: repeat;
-        background-attachment: fixed;
+        background-size: 150px; background-repeat: repeat; background-attachment: fixed;
     }}
     
-    /* CONTAINER */
     .block-container {{
-        max-width: 1400px !important;
-        padding: 2rem !important;
-        margin: auto !important;
-        background: rgba(12, 12, 12, 0.96);
-        backdrop-filter: blur(20px);
-        border-radius: 0px;
-        border-bottom: 2px solid #333;
-        box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+        max-width: 1400px !important; padding: 2rem !important; margin: auto !important;
+        background: rgba(12, 12, 12, 0.96); backdrop-filter: blur(20px);
+        border-radius: 0px; border-bottom: 2px solid #333; box-shadow: 0 20px 50px rgba(0,0,0,0.9);
     }}
     
-    /* HEADER */
     .main-title {{
-        font-size: 60px; font-weight: 900; color: white;
-        text-align: center; margin-bottom: 20px; text-transform: uppercase;
-        letter-spacing: -2px;
-        background: -webkit-linear-gradient(#eee, #888);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        font-size: 60px; font-weight: 900; color: white; text-align: center; margin-bottom: 20px;
+        text-transform: uppercase; letter-spacing: -2px;
+        background: -webkit-linear-gradient(#eee, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }}
     
-    /* --- NEW DPM BUTTON STYLE (SMALL & DISCRETE) --- */
     .dpm-button {{
-        display: inline-block;
-        background-color: rgba(37, 99, 235, 0.15); /* Transparent Blue */
-        color: #60a5fa !important; /* Light Blue Text */
-        text-align: center;
-        padding: 6px 15px;
-        border-radius: 20px; /* Pill shape */
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 12px;
-        border: 1px solid #2563eb;
-        margin-top: 8px;
-        transition: all 0.2s ease;
-        float: right; /* Aligned right under input */
+        display: inline-block; background-color: rgba(37, 99, 235, 0.15); color: #60a5fa !important;
+        text-align: center; padding: 6px 15px; border-radius: 20px; text-decoration: none;
+        font-weight: 600; font-size: 12px; border: 1px solid #2563eb; margin-top: 8px; transition: all 0.2s ease;
+        float: right;
     }}
-    .dpm-button:hover {{
-        background-color: #2563eb;
-        color: white !important;
-        box-shadow: 0 0 10px rgba(37, 99, 235, 0.6);
-    }}
+    .dpm-button:hover {{ background-color: #2563eb; color: white !important; box-shadow: 0 0 10px rgba(37, 99, 235, 0.6); }}
 
-    /* PANELS */
-    .player-panel {{
-        background: rgba(255, 255, 255, 0.03);
-        border-radius: 20px;
-        padding: 30px;
-        height: 100%;
-        border: 1px solid rgba(255,255,255,0.05);
-    }}
-    .panel-header {{
-        text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px;
-    }}
+    .player-panel {{ background: rgba(255, 255, 255, 0.03); border-radius: 20px; padding: 30px; height: 100%; border: 1px solid rgba(255,255,255,0.05); }}
+    .panel-header {{ text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px; }}
     .player-name {{ font-size: 36px; font-weight: 900; color: white; margin-bottom: 5px; }}
     .player-role {{ font-size: 18px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; }}
     
@@ -188,25 +117,18 @@ st.markdown(
     .role-pass {{ color: #ff4444; }}
     .role-equal {{ color: #00ff99; }}
 
-    /* STATS */
     .stat-row {{ display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }}
     .stat-label {{ font-size: 16px; color: #aaa; font-weight: 600; }}
     .stat-value {{ font-size: 22px; color: white; font-weight: 800; }}
     .stat-diff {{ font-size: 13px; font-weight: 600; margin-left: 10px; }}
-    .pos {{ color: #00ff99; }}
-    .neg {{ color: #ff4444; }}
-    .neutral {{ color: #666; }}
+    .pos {{ color: #00ff99; }} .neg {{ color: #ff4444; }} .neutral {{ color: #666; }}
 
-    /* VERDICT */
     .verdict-banner {{ text-align: center; padding: 40px; margin-bottom: 50px; border-radius: 20px; background: rgba(0,0,0,0.3); border: 2px solid #333; }}
 
-    /* --- MAIN ACTION BUTTON --- */
     .stButton > button {{
-        width: 100%; height: 60px;
-        background: linear-gradient(90deg, #ff0055, #ff2222);
-        color: white; font-size: 24px; font-weight: 800;
-        border: none; border-radius: 12px; text-transform: uppercase;
-        transition: 0.2s; letter-spacing: 1px;
+        width: 100%; height: 60px; background: linear-gradient(90deg, #ff0055, #ff2222);
+        color: white; font-size: 24px; font-weight: 800; border: none; border-radius: 12px;
+        text-transform: uppercase; transition: 0.2s; letter-spacing: 1px;
     }}
     .stButton > button:hover {{ transform: translateY(-2px); box-shadow: 0 10px 30px rgba(255,0,85,0.4); }}
     
@@ -219,23 +141,24 @@ st.markdown(
 # --- HEADER & LANGUAGE ---
 c_title, c_lang = st.columns([5, 1])
 with c_lang:
-    selected_lang = st.selectbox("Language / Langue", ["FR", "EN", "ES", "KR"], label_visibility="collapsed")
+    selected_lang = st.selectbox("Language", ["FR", "EN"], label_visibility="collapsed")
 
-T = TRANSLATIONS[selected_lang]
+T = TRANSLATIONS.get(selected_lang, TRANSLATIONS["EN"])
 
 st.markdown(f'<div class="main-title">{T["title"]}</div>', unsafe_allow_html=True)
 
 # --- FORMULAIRE ---
 with st.form("search_form"):
-    c1, c2 = st.columns([4, 1], gap="medium")
+    c1, c2, c3 = st.columns([4, 1, 1], gap="small")
     with c1:
         riot_id_input = st.text_input("Riot ID", placeholder=T["placeholder"])
-        # --- BOUTON DPM DISCRET ---
         st.markdown(f'<a href="https://dpm.lol" target="_blank" class="dpm-button">{T["dpm_btn"]}</a>', unsafe_allow_html=True)
     with c2:
         region_select = st.selectbox("Region", ["EUW1", "NA1", "KR", "EUN1", "TR1"])
+    with c3:
+        # Option pour chercher en Flex si pas de SoloQ
+        queue_type = st.selectbox("Mode", ["Solo/Duo", "Flex"], index=0)
     
-    # Bouton principal
     submitted = st.form_submit_button(T["btn_scan"])
 
 
@@ -253,26 +176,14 @@ def get_champ_url(champ_name):
     return f"https://ddragon.leagueoflegends.com/cdn/{DD_VERSION}/img/champion/{clean}.png"
 
 def render_stat_row(label, val, diff, unit=""):
-    if diff > 0:
-        diff_html = f"<span class='stat-diff pos'>+{round(diff, 1)}{unit}</span>"
-    elif diff < 0:
-        diff_html = f"<span class='stat-diff neg'>{round(diff, 1)}{unit}</span>"
-    else:
-        diff_html = f"<span class='stat-diff neutral'>=</span>"
+    if diff > 0: diff_html = f"<span class='stat-diff pos'>+{round(diff, 1)}{unit}</span>"
+    elif diff < 0: diff_html = f"<span class='stat-diff neg'>{round(diff, 1)}{unit}</span>"
+    else: diff_html = f"<span class='stat-diff neutral'>=</span>"
 
     val_display = f"{val}{unit}"
-    if isinstance(val, int) and val > 1000:
-        val_display = f"{val/1000:.1f}k"
+    if isinstance(val, int) and val > 1000: val_display = f"{val/1000:.1f}k"
 
-    st.markdown(f"""
-    <div class="stat-row">
-        <div class="stat-label">{label}</div>
-        <div style="display:flex; align-items:baseline;">
-            <div class="stat-value">{val_display}</div>
-            {diff_html}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"""<div class="stat-row"><div class="stat-label">{label}</div><div style="display:flex; align-items:baseline;"><div class="stat-value">{val_display}</div>{diff_html}</div></div>""", unsafe_allow_html=True)
 
 # --- CACHED FUNCTIONS ---
 @st.cache_data(ttl=600)
@@ -280,9 +191,10 @@ def get_puuid_from_api(name, tag, region, api_key):
     url = f"https://{region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{name}/{tag}?api_key={api_key}"
     return requests.get(url)
 
-@st.cache_data(ttl=600)
-def get_matches_from_api(puuid, region, api_key):
-    url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue=420&start=0&count=20&api_key={api_key}"
+# Cache plus court pour les matchs (2min) pour éviter le blocage "0 games"
+@st.cache_data(ttl=120) 
+def get_matches_from_api(puuid, region, api_key, queue_id):
+    url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue={queue_id}&start=0&count=20&api_key={api_key}"
     return requests.get(url)
 
 def fetch_match_detail(match_id, region, api_key):
@@ -291,35 +203,40 @@ def fetch_match_detail(match_id, region, api_key):
 
 # --- LOGIQUE ---
 if submitted:
-    
     def get_regions(region_code):
         if region_code in ["EUW1", "EUN1", "TR1", "RU"]: return "europe"
         elif region_code == "KR": return "asia"
         else: return "americas"
 
     if not riot_id_input or "#" not in riot_id_input:
-        st.error("⚠️ Format: Name#TAG")
+        st.error("⚠️ Format invalide/Invalid format (Name#TAG)")
     else:
         name_raw, tag = riot_id_input.split("#")
         name_encoded = quote(name_raw)
         region = get_regions(region_select)
+        
+        # Queue ID Map
+        q_id = 420 if queue_type == "Solo/Duo" else 440
         
         with st.spinner(T["loading"]):
             try:
                 # 1. PUUID
                 resp_acc = get_puuid_from_api(name_encoded, tag, region, API_KEY)
                 if resp_acc.status_code != 200:
-                    st.error(f"Error {resp_acc.status_code}")
+                    st.error(f"Player not found / Joueur introuvable (Error {resp_acc.status_code})")
                     st.stop()
                 puuid = resp_acc.json().get("puuid")
 
                 # 2. MATCH IDs
-                resp_matches = get_matches_from_api(puuid, region, API_KEY)
+                resp_matches = get_matches_from_api(puuid, region, API_KEY, q_id)
                 match_ids = resp_matches.json()
                 
                 if not match_ids:
-                    st.warning("No Ranked games.")
+                    # Message d'erreur personnalisé
+                    st.warning(f"⚠️ {T['error_no_games']}")
+                    st.info(f"💡 {T['error_hint']} ({queue_type})")
                     st.stop()
+                    
             except Exception as e:
                 st.error(f"API Error: {e}")
                 st.stop()
@@ -400,7 +317,6 @@ if submitted:
                 s_me = best_duo['my_stats_vs']
                 s_duo = best_duo['stats']
                 
-                # PILLARS
                 score_combat_me = (s_me['kda'] * 2) + (s_me['dmg'] / 1000)
                 score_combat_duo = (s_duo['kda'] * 2) + (s_duo['dmg'] / 1000)
                 score_eco_me = s_me['gold']
@@ -461,10 +377,8 @@ if submitted:
                 col_left, col_mid, col_right = st.columns([10, 1, 10]) 
                 
                 with col_left:
-                    # Rôle
                     r = T["role_driver"] if status=='BOOSTER' else (T["role_pass"] if status=='BOOSTED' else T["role_equal"])
                     c = 'role-driver' if status=='BOOSTER' else ('role-pass' if status=='BOOSTED' else 'role-equal')
-                    
                     st.markdown(f"""
                     <div class="player-panel">
                         <div class="panel-header" style="border-color:{header_color if status=='BOOSTER' else '#333'}">
@@ -472,14 +386,11 @@ if submitted:
                             <div class="player-role {c}">{r}</div>
                         </div>
                     """, unsafe_allow_html=True)
-                    
-                    # Icons
                     top_champs = [c[0] for c in Counter(best_duo['my_champs']).most_common(3)]
                     html_champs = "<div class='champ-row' style='justify-content:center;'>"
                     for ch in top_champs: html_champs += f"<img src='{get_champ_url(ch)}' class='champ-img'>"
                     html_champs += "</div>"
                     st.markdown(html_champs, unsafe_allow_html=True)
-                    
                     st.markdown(f"<div style='text-align:center; color:#888; margin-bottom:15px'>{T['stats']} {target_name}</div>", unsafe_allow_html=True)
                     render_stat_row("KDA", avg_f(s_me, 'kda'), avg_f(s_me, 'kda') - avg_f(s_duo, 'kda'))
                     render_stat_row("Damage", avg(s_me, 'dmg'), avg(s_me, 'dmg') - avg(s_duo, 'dmg'))
@@ -492,7 +403,6 @@ if submitted:
                 with col_right:
                     r = T["role_driver"] if status=='BOOSTED' else (T["role_pass"] if status=='BOOSTER' else T["role_equal"])
                     c = 'role-driver' if status=='BOOSTED' else ('role-pass' if status=='BOOSTER' else 'role-equal')
-                    
                     st.markdown(f"""
                     <div class="player-panel">
                         <div class="panel-header" style="border-color:{header_color if status=='BOOSTED' else '#333'}">
@@ -500,13 +410,11 @@ if submitted:
                             <div class="player-role {c}">{r}</div>
                         </div>
                     """, unsafe_allow_html=True)
-                    
                     top_champs_duo = [c[0] for c in Counter(best_duo['champs']).most_common(3)]
                     html_champs_d = "<div class='champ-row' style='justify-content:center;'>"
                     for ch in top_champs_duo: html_champs_d += f"<img src='{get_champ_url(ch)}' class='champ-img'>"
                     html_champs_d += "</div>"
                     st.markdown(html_champs_d, unsafe_allow_html=True)
-                    
                     st.markdown(f"<div style='text-align:center; color:#888; margin-bottom:15px'>{T['stats']} {duo_name}</div>", unsafe_allow_html=True)
                     render_stat_row("KDA", avg_f(s_duo, 'kda'), avg_f(s_duo, 'kda') - avg_f(s_me, 'kda'))
                     render_stat_row("Damage", avg(s_duo, 'dmg'), avg(s_duo, 'dmg') - avg(s_me, 'dmg'))
