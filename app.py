@@ -1,5 +1,5 @@
 import streamlit as st
-import streamlit.components.v1 as components # C'est cette ligne qui manquait !
+import streamlit.components.v1 as components
 import requests
 import time
 from urllib.parse import quote
@@ -21,14 +21,6 @@ except FileNotFoundError:
 BACKGROUND_IMAGE_URL = "https://media.discordapp.net/attachments/1065027576572518490/1179469739770630164/face_tiled.jpg?ex=657a90f2&is=65681bf2&hm=123"
 DD_VERSION = "13.24.1"
 
-# --- AUTO-UPDATE VERSION ---
-@st.cache_data(ttl=3600)
-def get_dd_version():
-    try: return requests.get("https://ddragon.leagueoflegends.com/api/versions.json").json()[0]
-    except: return "14.23.1"
-
-DD_VERSION = get_dd_version()
-
 # --- QUEUE MAP ---
 QUEUE_MAP = {
     "Ranked Solo/Duo": 420,
@@ -38,6 +30,14 @@ QUEUE_MAP = {
     "ARAM": 450,
     "Arena": 1700
 }
+
+# --- AUTO-UPDATE VERSION ---
+@st.cache_data(ttl=3600)
+def get_dd_version():
+    try: return requests.get("https://ddragon.leagueoflegends.com/api/versions.json").json()[0]
+    except: return "14.23.1"
+
+DD_VERSION = get_dd_version()
 
 # --- TRADUCTIONS ---
 TRANSLATIONS = {
@@ -169,31 +169,34 @@ def safe_format(text, target, duo):
     try: return text.format(target=target, duo=duo)
     except: return text
 
-def analyze_qualities_ruthless(stats, role, lang_dict):
-    """Analyse stricte (V49)"""
+# --- ANALYSE QUALITÉ CORRIGÉE ---
+def analyze_qualities(stats, role, lang_dict):
     qualities, flaws = [], []
     
-    # QUALITÉS (Seuils Hauts)
+    # Qualités
     if stats['kda'] > 3.5: qualities.append(lang_dict.get("q_surv", "High KDA"))
     if stats['obj'] > 5000: qualities.append(lang_dict.get("q_obj", "Obj Dmg"))
     if stats['dpm'] > 750: qualities.append(lang_dict.get("q_dmg", "High Dmg"))
     if stats['vis'] > 35: qualities.append(lang_dict.get("q_vis", "Vision"))
     
-    # DÉFAUT FORCÉ (Maillon faible)
+    # Défauts (Force un défaut)
     scores = {
         'kda': stats['kda'] / 3.0,
-        'vis': stats['vis'] / 30.0
+        'dpm': stats['dpm'] / 500.0,
+        'vis': stats['vis'] / 25.0,
+        'obj': stats['obj'] / 3000.0,
+        'gold': stats['gold'] / 400.0
     }
     
-    if role != "UTILITY":
-        scores['dpm'] = stats['dpm'] / 600.0
-        scores['gold'] = stats['gold'] / 400.0
-    
-    if role != "JUNGLE" and role != "UTILITY":
-        scores['obj'] = stats['obj'] / 3000.0
-    if role == "JUNGLE":
+    # Filtrage selon le rôle pour ne pas blâmer injustement
+    if role == "UTILITY": # Support: on ignore farm et dégâts
+        scores.pop('dpm', None)
+        scores.pop('gold', None)
+    elif role == "JUNGLE": # Jungle: obj important
         scores['obj'] = stats['obj'] / 5000.0
-        
+    else: # Laners: obj moins important pour défaut
+        scores['obj'] = stats['obj'] / 2000.0
+
     worst_stat = min(scores, key=scores.get)
     
     flaws_map = {
@@ -204,10 +207,10 @@ def analyze_qualities_ruthless(stats, role, lang_dict):
         'gold': lang_dict.get("f_farm", "Low Farm")
     }
     
-    flaw = flaws_map.get(worst_stat, "Unknown")
+    flaw = flaws_map.get(worst_stat, "Ok")
     q = qualities[0] if qualities else lang_dict.get("q_bal", "Balanced")
-    if role == "UTILITY" and q == lang_dict.get("q_bal"): q = lang_dict.get("q_supp", "Support")
     
+    if role == "UTILITY" and q == lang_dict.get("q_bal"): q = lang_dict.get("q_supp", "Support")
     return q, flaw
 
 def render_stat_row(label, val, diff, unit=""):
@@ -397,8 +400,8 @@ if submitted:
                 </div>""", unsafe_allow_html=True)
 
                 col_left, col_right = st.columns(2, gap="large")
-                qual, flaw = analyze_qualities_ruthless(stats_me, main_role_me, T)
-                qual_d, flaw_d = analyze_qualities_ruthless(stats_duo, main_role_duo, T)
+                qual, flaw = analyze_qualities(stats_me, main_role_me, T)
+                qual_d, flaw_d = analyze_qualities(stats_duo, main_role_duo, T)
 
                 with col_left:
                     st.markdown(f"""<div class="player-panel"><div class="player-name">{target_name}</div>
