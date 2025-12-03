@@ -12,14 +12,12 @@ import time
 import os
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V71 (Logic Fix)", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V72 (Percent Diff)", layout="wide")
 
 # --- API KEY ---
 try:
-    # Essaie d'abord les secrets Streamlit
     API_KEY = st.secrets["RIOT_API_KEY"]
 except (FileNotFoundError, KeyError):
-    # Sinon, cherche dans les variables d'environnement (Railway)
     API_KEY = os.environ.get("RIOT_API_KEY")
 
 if not API_KEY:
@@ -42,7 +40,7 @@ ROLE_ICONS = {
     "BOTTOM": "🏹 ADC", "UTILITY": "🩹 SUPP", "UNKNOWN": "❓ FILL"
 }
 
-# --- TRADUCTIONS (MISES A JOUR AVEC NOUVELLE LOGIQUE) ---
+# --- TRADUCTIONS ---
 TRANSLATIONS = {
     "FR": {
         "title": "LoL Duo Analyst",
@@ -51,14 +49,12 @@ TRANSLATIONS = {
         "label_id": "Riot ID", "lbl_region": "RÉGION", "lbl_mode": "MODE", "dpm_btn": "🔗 Voir sur dpm.lol",
         "lbl_duo_detected": "🚨 DUO DÉTECTÉ AVEC {duo} 🚨",
         
-        # Nouveaux Verdicts Logiques
         "v_hyper": "CARRY MACHINE", "s_hyper": "{target} inflige des dégâts monstrueux comparé à {duo}",
         "v_survivor": "IMMORTEL", "s_survivor": "{target} survit et joue propre, {duo} meurt trop souvent",
         "v_tactician": "MASTERMIND", "s_tactician": "{target} gagne grâce à la vision et au map control",
         "v_breacher": "DESTRUCTEUR", "s_breacher": "{target} prend les tours, {duo} regarde",
         "v_solid": "DUO FUSIONNEL", "s_solid": "Synergie parfaite entre {target} et {duo}",
         
-        # Cas négatifs (Target est carry par le Duo)
         "v_passenger": "PASSAGER", "s_passenger": "{target} se laisse porter par {duo} (Dégâts faibles)",
         "v_feeder": "ZONE DE DANGER", "s_feeder": "{target} passe trop de temps à l'écran gris vs {duo}",
         "v_struggle": "EN DIFFICULTÉ", "s_struggle": "{target} peine à suivre le rythme de {duo}",
@@ -90,7 +86,6 @@ TRANSLATIONS = {
         "f_feed": "Too fragile", "f_blind": "Blind", "f_afk": "Low Dmg", "error_no_games": "No games found.", "error_hint": "Check Region."
     }
 }
-# Fallback pour les autres langues (simplifié pour le code)
 TRANSLATIONS["ES"] = TRANSLATIONS["EN"]
 TRANSLATIONS["KR"] = TRANSLATIONS["EN"]
 
@@ -226,7 +221,6 @@ def safe_format(text, target, duo):
 # --- LOGIQUE SCORE & STYLE ---
 def determine_playstyle(stats, role, lang_dict):
     badges = []
-    # Safe .get() pour éviter les erreurs
     kda = stats.get('kda', 0)
     vis = stats.get('vis_min', 0)
     kp = stats.get('kp', 0)
@@ -276,7 +270,6 @@ def get_puuid(name, tag, region, api_key):
 
 @st.cache_data(ttl=120)
 def get_matches(puuid, region, api_key, q_id):
-    # Note: count réduit à 15 pour stabilité
     return safe_request(f"https://{region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue={q_id}&start=0&count=15&api_key={api_key}")
 
 def fetch_match(m_id, region, api_key):
@@ -391,10 +384,7 @@ if submitted:
                 avg_duo['kda'] = ckda(avg_duo)
                 avg_me['kda'] = ckda(avg_me)
 
-                # --- NOUVELLE LOGIQUE VERDICT ROBUSTE ---
-                # On compare les stats pour déterminer le TYPE de carry
-                
-                # Calcul des scores globaux pour savoir QUI carry
+                # --- VERDICT LOGIC ---
                 def score(s, r):
                     sc = min(5, s['kda']) + (s['kp']*4) + min(3, (s['vis_min']/(2.0 if r=="UTILITY" else 1.0))*2)
                     sc += min(4, s['dmg_min']/700) if r!="UTILITY" else 0
@@ -404,39 +394,24 @@ if submitted:
                 s_duo = score(avg_duo, r_duo)
                 ratio = s_me / max(0.1, s_duo)
 
-                # Calcul des différences normalisées pour savoir COMMENT
-                diff_kda = (avg_me['kda'] - avg_duo['kda']) / 1.5      # 1.5 KDA diff is huge
-                diff_dmg = (avg_me['dmg_min'] - avg_duo['dmg_min']) / 400 # 400 DPM diff is huge
-                diff_vis = (avg_me['vis_min'] - avg_duo['vis_min']) / 0.8 # 0.8 VS/min diff is huge
-                diff_obj = (avg_me['obj'] - avg_duo['obj']) / 3000     # 3000 Obj Dmg diff is huge
+                diff_kda = (avg_me['kda'] - avg_duo['kda']) / 1.5
+                diff_dmg = (avg_me['dmg_min'] - avg_duo['dmg_min']) / 400
+                diff_vis = (avg_me['vis_min'] - avg_duo['vis_min']) / 0.8
+                diff_obj = (avg_me['obj'] - avg_duo['obj']) / 3000
                 
                 title, color, sub = T["v_solid"], "#00ff99", safe_format(T["s_solid"], t_safe, duo_name)
                 
-                # SCENARIO 1: L'UTILISATEUR CARRY FORT
                 if ratio > 1.15:
-                    # On regarde quelle diff est la plus grande
                     max_diff = max(diff_kda, diff_dmg, diff_vis, diff_obj)
-                    
-                    if max_diff == diff_kda:
-                        title, color, sub = T["v_survivor"], "#FFD700", safe_format(T["s_survivor"], t_safe, duo_name)
-                    elif max_diff == diff_vis:
-                        title, color, sub = T["v_tactician"], "#00BFFF", safe_format(T["s_tactician"], t_safe, duo_name)
-                    elif max_diff == diff_obj:
-                        title, color, sub = T["v_breacher"], "#FFA500", safe_format(T["s_breacher"], t_safe, duo_name)
-                    else: # Par défaut dégâts
-                        title, color, sub = T["v_hyper"], "#ff0055", safe_format(T["s_hyper"], t_safe, duo_name)
-                
-                # SCENARIO 2: LE DUO CARRY (Target en difficulté)
+                    if max_diff == diff_kda: title, color, sub = T["v_survivor"], "#FFD700", safe_format(T["s_survivor"], t_safe, duo_name)
+                    elif max_diff == diff_vis: title, color, sub = T["v_tactician"], "#00BFFF", safe_format(T["s_tactician"], t_safe, duo_name)
+                    elif max_diff == diff_obj: title, color, sub = T["v_breacher"], "#FFA500", safe_format(T["s_breacher"], t_safe, duo_name)
+                    else: title, color, sub = T["v_hyper"], "#ff0055", safe_format(T["s_hyper"], t_safe, duo_name)
                 elif ratio < 0.85:
-                    # On regarde ce qui manque le plus à l'utilisateur (diff négative la plus forte)
-                    min_diff = min(diff_kda, diff_dmg, diff_vis) # Obj moins pertinent ici
-                    
-                    if min_diff == diff_kda:
-                        title, color, sub = T["v_feeder"], "#ff4444", safe_format(T["s_feeder"], t_safe, duo_name)
-                    elif min_diff == diff_dmg:
-                        title, color, sub = T["v_passenger"], "#888888", safe_format(T["s_passenger"], t_safe, duo_name)
-                    else:
-                        title, color, sub = T["v_struggle"], "#ff4444", safe_format(T["s_struggle"], t_safe, duo_name)
+                    min_diff = min(diff_kda, diff_dmg, diff_vis)
+                    if min_diff == diff_kda: title, color, sub = T["v_feeder"], "#ff4444", safe_format(T["s_feeder"], t_safe, duo_name)
+                    elif min_diff == diff_dmg: title, color, sub = T["v_passenger"], "#888888", safe_format(T["s_passenger"], t_safe, duo_name)
+                    else: title, color, sub = T["v_struggle"], "#ff4444", safe_format(T["s_struggle"], t_safe, duo_name)
 
                 components.html(f"<script>window.parent.document.querySelector('.verdict-box').scrollIntoView({{behavior:'smooth'}});</script>", height=0)
 
@@ -463,9 +438,21 @@ if submitted:
                     ch_h = "".join([f"<img src='{get_champ_url(x)}' style='width:55px; border-radius:50%; border:2px solid #333; margin:4px;'>" for x in c])
                     
                     def sl(l, v, d_v, p=False, k=False):
-                        vs = f"{int(v*100)}%" if p else (f"{v:.2f}" if k else (f"{int(v/1000)}k" if v>1000 else f"{int(v)}"))
-                        dh = f"<span class='stat-diff pos'>+{d_v:.1f}</span>" if d_v>0 else (f"<span class='stat-diff neg'>{d_v:.1f}</span>" if d_v<0 else f"<span class='stat-diff neutral'>=</span>")
-                        return f"""<div class="stat-item"><div class="stat-val-container"><div class="stat-val">{vs}</div>{dh}</div><div class="stat-lbl">{l}</div></div>"""
+                        val_str = f"{int(v*100)}%" if p else (f"{v:.2f}" if k else (f"{int(v/1000)}k" if v>1000 else f"{int(v)}"))
+                        
+                        # --- MODIFICATION: CALCUL POURCENTAGE ---
+                        if p:
+                            pct_val = d_v # Pour KP c'est déjà en %
+                        else:
+                            other = v - d_v
+                            if abs(other) < 0.01: pct_val = 100 if v > other else 0
+                            else: pct_val = (d_v / abs(other)) * 100
+                            
+                        if pct_val > 0: dh = f"<span class='stat-diff pos'>+{int(pct_val)}%</span>"
+                        elif pct_val < 0: dh = f"<span class='stat-diff neg'>{int(pct_val)}%</span>"
+                        else: dh = f"<span class='stat-diff neutral'>=</span>"
+                        
+                        return f"""<div class="stat-item"><div class="stat-val-container"><div class="stat-val">{val_str}</div>{dh}</div><div class="stat-lbl">{l}</div></div>"""
 
                     gr = f"""<div class="stat-grid">
                         {sl("KDA", s.get('kda',0), diff.get('kda',0), k=True)}
