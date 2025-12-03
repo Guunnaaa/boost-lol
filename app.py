@@ -12,7 +12,7 @@ import time
 import os
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V72 (Percent Diff)", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V73 (Responsive Fix)", layout="wide")
 
 # --- API KEY ---
 try:
@@ -415,10 +415,11 @@ if submitted:
 
                 components.html(f"<script>window.parent.document.querySelector('.verdict-box').scrollIntoView({{behavior:'smooth'}});</script>", height=0)
 
+                # MODIFICATION : clamp() pour la taille du titre responsive
                 st.markdown(f"""
                 <div class="verdict-box" style="border-color:{color}">
                     <div style="font-size:14px; font-weight:700; color:#aaa; margin-bottom:5px; text-transform:uppercase;">{safe_format(T['lbl_duo_detected'], target=t_safe, duo=duo_name)}</div>
-                    <div style="font-size:45px; font-weight:900; color:{color}; margin-bottom:10px;">{title}</div>
+                    <div style="font-size:clamp(30px, 6vw, 45px); font-weight:900; color:{color}; margin-bottom:10px; line-height:1.1;">{title}</div>
                     <div style="font-size:18px; color:#eee; font-style:italic;">"{sub}"</div>
                     <div style="margin-top:15px; color:#888; font-weight:600;">{g} Games • {wr}% Winrate</div>
                 </div>
@@ -439,10 +440,8 @@ if submitted:
                     
                     def sl(l, v, d_v, p=False, k=False):
                         val_str = f"{int(v*100)}%" if p else (f"{v:.2f}" if k else (f"{int(v/1000)}k" if v>1000 else f"{int(v)}"))
-                        
-                        # --- MODIFICATION: CALCUL POURCENTAGE ---
                         if p:
-                            pct_val = d_v # Pour KP c'est déjà en %
+                            pct_val = d_v
                         else:
                             other = v - d_v
                             if abs(other) < 0.01: pct_val = 100 if v > other else 0
