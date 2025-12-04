@@ -12,7 +12,7 @@ import time
 import os
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V76 (Syntax Fix)", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V77 (Final Link Fix)", layout="wide")
 
 # --- API KEY ---
 try:
@@ -171,7 +171,7 @@ st.markdown(f"""
         background: #1d4ed8;
         transform: translateY(-2px);
     }}
-    /* Correction ici : doubles accolades pour le CSS dans f-string */
+    
     .dpm-btn-header {{ 
         background: rgba(37, 99, 235, 0.2); color: #60a5fa !important; padding: 5px 10px;
         border-radius: 6px; text-decoration: none; font-size: 12px; border: 1px solid #2563eb;
@@ -239,25 +239,14 @@ def safe_format(text, target, duo):
     try: return text.format(target=html.escape(str(target)), duo=html.escape(str(duo)))
     except: return text
 
-def get_dpm_url(riot_id_str, region_code):
-    """Génère le lien CORRECT vers le profil dpm.lol (avec région)"""
+def get_dpm_url(riot_id_str):
+    """Génère le lien vers dpm.lol selon le format: dpm.lol/name-tag"""
     try:
         if "#" in riot_id_str:
             name, tag = riot_id_str.split("#")
-            # Encodage de sécurité pour les noms avec espaces
-            name = quote(name)
+            name = quote(name) # Sécurité pour les espaces
             tag = quote(tag)
-            
-            # Map des régions pour l'URL dpm.lol
-            r_map = {
-                "EUW1": "euw", "NA1": "na", "KR": "kr", "EUN1": "eune", 
-                "TR1": "tr", "BR1": "br", "JP1": "jp", "LA1": "lan", 
-                "LA2": "las", "OC1": "oce", "RU": "ru", "PH2": "ph",
-                "SG2": "sg", "TH2": "th", "TW2": "tw", "VN2": "vn"
-            }
-            r_slug = r_map.get(region_code, "euw")
-            
-            return f"https://www.dpm.lol/{r_slug}/{name}-{tag}"
+            return f"https://dpm.lol/{name}-{tag}"
         return "https://dpm.lol"
     except:
         return "https://dpm.lol"
@@ -483,12 +472,11 @@ if submitted:
                 bdg_me = determine_playstyle(avg_me, r_me, T)
                 bdg_duo = determine_playstyle(avg_duo, r_duo, T)
                 
-                def d_card(n, c, s, b, r_i, diff, clr, full_id, region):
+                def d_card(n, c, s, b, r_i, diff, clr, full_id):
                     bdg_h = "".join([f"<span class='badge {x[1]}'>{x[0]}</span>" for x in b])
                     ch_h = "".join([f"<img src='{get_champ_url(x)}' style='width:55px; border-radius:50%; border:2px solid #333; margin:4px;'>" for x in c])
                     
-                    # URL DPM Corrigée
-                    dpm_url = get_dpm_url(full_id, region)
+                    dpm_url = get_dpm_url(full_id)
                     
                     def sl(l, v, d_v, p=False, k=False):
                         val_str = f"{int(v*100)}%" if p else (f"{v:.2f}" if k else (f"{int(v/1000)}k" if v>1000 else f"{int(v)}"))
@@ -526,8 +514,8 @@ if submitted:
                 diff_m = {k: avg_me.get(k,0)-avg_duo.get(k,0) for k in avg_me if isinstance(avg_me[k],(int,float))}
                 diff_d = {k: avg_duo.get(k,0)-avg_me.get(k,0) for k in avg_duo if isinstance(avg_duo[k],(int,float))}
 
-                with col1: d_card(t_safe, ch_me, avg_me, bdg_me, ROLE_ICONS.get(r_me,"UNK"), diff_m, '#00c6ff', riot_id_input, region_select)
-                with col2: d_card(duo_name, ch_duo, avg_duo, bdg_duo, ROLE_ICONS.get(r_duo,"UNK"), diff_d, '#ff0055', duo_full_id, region_select)
+                with col1: d_card(t_safe, ch_me, avg_me, bdg_me, ROLE_ICONS.get(r_me,"UNK"), diff_m, '#00c6ff', riot_id_input)
+                with col2: d_card(duo_name, ch_duo, avg_duo, bdg_duo, ROLE_ICONS.get(r_duo,"UNK"), diff_d, '#ff0055', duo_full_id)
 
             else:
                 st.markdown(f"""<div class="verdict-box" style="border-color:#888;"><div style="font-size:32px; font-weight:900; color:#888;">{T["solo"]}</div><div style="font-size:16px; color:#aaa;">{T["solo_sub"]}</div></div>""", unsafe_allow_html=True)
