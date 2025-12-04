@@ -12,7 +12,7 @@ import time
 import os
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V75 (Fixed Links & Style)", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V76 (Syntax Fix)", layout="wide")
 
 # --- API KEY ---
 try:
@@ -153,8 +153,8 @@ st.markdown(f"""
         background: rgba(20, 20, 20, 0.8); border: 2px solid #333;
     }}
     
-    /* STYLE BOUTON DPM CORRIGÉ (BLEU + ARRONDI) */
-    .dpm-btn {
+    /* STYLE BOUTON DPM */
+    .dpm-btn {{
         background: #2563eb; /* Bleu vif */
         color: white !important;
         padding: 6px 16px;
@@ -166,15 +166,16 @@ st.markdown(f"""
         margin-bottom: 8px;
         transition: 0.2s;
         box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
-    }
-    .dpm-btn:hover {
+    }}
+    .dpm-btn:hover {{
         background: #1d4ed8;
         transform: translateY(-2px);
-    }
-    .dpm-btn-header { /* Pour le header */
+    }}
+    /* Correction ici : doubles accolades pour le CSS dans f-string */
+    .dpm-btn-header {{ 
         background: rgba(37, 99, 235, 0.2); color: #60a5fa !important; padding: 5px 10px;
         border-radius: 6px; text-decoration: none; font-size: 12px; border: 1px solid #2563eb;
-    }
+    }}
 
     .stButton > button {{
         width: 100%; height: 55px; background: linear-gradient(135deg, #ff0055, #cc0044);
