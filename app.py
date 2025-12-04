@@ -12,7 +12,7 @@ import time
 import os
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V74 (DPM Profile Buttons)", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V75 (Fixed Links & Style)", layout="wide")
 
 # --- API KEY ---
 try:
@@ -47,7 +47,7 @@ TRANSLATIONS = {
         "btn_scan": "LANCER L'ANALYSE",
         "placeholder": "Exemple: Kameto#EUW",
         "label_id": "Riot ID", "lbl_region": "RÉGION", "lbl_mode": "MODE", "dpm_btn": "🔗 Voir sur dpm.lol",
-        "btn_profile": "Profil DPM", # AJOUT
+        "btn_profile": "Voir Profil DPM",
         "lbl_duo_detected": "🚨 DUO DÉTECTÉ AVEC {duo} 🚨",
         
         "v_hyper": "CARRY MACHINE", "s_hyper": "{target} inflige des dégâts monstrueux comparé à {duo}",
@@ -70,7 +70,7 @@ TRANSLATIONS = {
     "EN": {
         "title": "LoL Duo Analyst", "btn_scan": "START ANALYSIS", "placeholder": "Example: Faker#KR1",
         "label_id": "Riot ID", "lbl_region": "REGION", "lbl_mode": "MODE", "dpm_btn": "🔗 Check dpm.lol",
-        "btn_profile": "DPM Profile", # AJOUT
+        "btn_profile": "DPM Profile",
         "lbl_duo_detected": "🚨 DUO DETECTED WITH {duo} 🚨",
         
         "v_hyper": "DMG CARRY", "s_hyper": "{target} is dealing massive damage compared to {duo}",
@@ -153,13 +153,28 @@ st.markdown(f"""
         background: rgba(20, 20, 20, 0.8); border: 2px solid #333;
     }}
     
-    /* STYLE BOUTONS DPM */
-    .dpm-btn {{
+    /* STYLE BOUTON DPM CORRIGÉ (BLEU + ARRONDI) */
+    .dpm-btn {
+        background: #2563eb; /* Bleu vif */
+        color: white !important;
+        padding: 6px 16px;
+        border-radius: 20px; /* Arrondi pilule */
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 700;
+        display: inline-block;
+        margin-bottom: 8px;
+        transition: 0.2s;
+        box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+    }
+    .dpm-btn:hover {
+        background: #1d4ed8;
+        transform: translateY(-2px);
+    }
+    .dpm-btn-header { /* Pour le header */
         background: rgba(37, 99, 235, 0.2); color: #60a5fa !important; padding: 5px 10px;
         border-radius: 6px; text-decoration: none; font-size: 12px; border: 1px solid #2563eb;
-        display: inline-block; transition: 0.2s;
-    }}
-    .dpm-btn:hover {{ background: rgba(37, 99, 235, 0.4); }}
+    }
 
     .stButton > button {{
         width: 100%; height: 55px; background: linear-gradient(135deg, #ff0055, #cc0044);
@@ -189,7 +204,7 @@ with st.form("search_form"):
         st.markdown(f"""
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
             <span style="font-size:14px; font-weight:700; color:#ddd;">{T['label_id']}</span>
-            <a href="https://dpm.lol" target="_blank" class="dpm-btn">{T['dpm_btn']}</a>
+            <a href="https://dpm.lol" target="_blank" class="dpm-btn-header">{T['dpm_btn']}</a>
         </div>""", unsafe_allow_html=True)
         riot_id_input = st.text_input("HiddenLabel", placeholder=T["placeholder"], label_visibility="collapsed")
     with c2:
@@ -224,13 +239,23 @@ def safe_format(text, target, duo):
     except: return text
 
 def get_dpm_url(riot_id_str, region_code):
-    """Génère le lien vers le profil dpm.lol"""
+    """Génère le lien CORRECT vers le profil dpm.lol (avec région)"""
     try:
         if "#" in riot_id_str:
             name, tag = riot_id_str.split("#")
-            # Map simple des régions pour dpm.lol (format slug)
-            r_map = {"EUW1": "euw", "NA1": "na", "KR": "kr", "EUN1": "eune", "TR1": "tr"}
+            # Encodage de sécurité pour les noms avec espaces
+            name = quote(name)
+            tag = quote(tag)
+            
+            # Map des régions pour l'URL dpm.lol
+            r_map = {
+                "EUW1": "euw", "NA1": "na", "KR": "kr", "EUN1": "eune", 
+                "TR1": "tr", "BR1": "br", "JP1": "jp", "LA1": "lan", 
+                "LA2": "las", "OC1": "oce", "RU": "ru", "PH2": "ph",
+                "SG2": "sg", "TH2": "th", "TW2": "tw", "VN2": "vn"
+            }
             r_slug = r_map.get(region_code, "euw")
+            
             return f"https://www.dpm.lol/{r_slug}/{name}-{tag}"
         return "https://dpm.lol"
     except:
@@ -356,12 +381,11 @@ if submitted:
                         with data_lock:
                             for p in parts:
                                 if p['teamId'] == me['teamId'] and p['puuid'] != puuid:
-                                    # Stockage amélioré avec TAG pour le lien DPM
                                     gid = f"{p.get('riotIdGameName')}#{p.get('riotIdTagLine')}"
                                     if gid not in duo_data:
                                         duo_data[gid] = {
                                             'name': p.get('riotIdGameName'),
-                                            'tag': p.get('riotIdTagLine'), # AJOUT IMPORTANT POUR LE LIEN
+                                            'tag': p.get('riotIdTagLine'),
                                             'games': 0, 'wins': 0, 'champs': [], 'roles': [], 's_duo': [], 's_me': []
                                         }
                                     d = duo_data[gid]
@@ -388,7 +412,6 @@ if submitted:
             if best_duo and max_g >= 2:
                 g = best_duo['games']
                 duo_name = html.escape(best_duo['name'])
-                # Création de l'ID complet pour le lien DPM du duo
                 duo_full_id = f"{best_duo['name']}#{best_duo['tag']}"
                 
                 t_safe = html.escape(target_name)
@@ -459,12 +482,11 @@ if submitted:
                 bdg_me = determine_playstyle(avg_me, r_me, T)
                 bdg_duo = determine_playstyle(avg_duo, r_duo, T)
                 
-                # --- MODIFICATION: AJOUT DU BOUTON DPM DANS LA CARTE ---
                 def d_card(n, c, s, b, r_i, diff, clr, full_id, region):
                     bdg_h = "".join([f"<span class='badge {x[1]}'>{x[0]}</span>" for x in b])
                     ch_h = "".join([f"<img src='{get_champ_url(x)}' style='width:55px; border-radius:50%; border:2px solid #333; margin:4px;'>" for x in c])
                     
-                    # Génération du lien DPM
+                    # URL DPM Corrigée
                     dpm_url = get_dpm_url(full_id, region)
                     
                     def sl(l, v, d_v, p=False, k=False):
@@ -490,11 +512,10 @@ if submitted:
                         {sl("GOLD/M", s.get('gold_min',0), diff.get('gold_min',0))}
                     </div>"""
                     
-                    # HTML mis à jour avec le bouton DPM
                     st.markdown(f"""
                     <div class="player-card" style="border-top: 4px solid {clr};">
                         <div class="player-name">{n}</div>
-                        <a href="{dpm_url}" target="_blank" class="dpm-btn" style="margin-bottom: 10px;">{T['btn_profile']}</a>
+                        <a href="{dpm_url}" target="_blank" class="dpm-btn">{T['btn_profile']}</a>
                         <div class="player-sub">{r_i}</div>
                         <div style="margin:10px 0;">{bdg_h}</div>
                         <div style="margin-bottom:15px;">{ch_h}</div>
@@ -504,7 +525,6 @@ if submitted:
                 diff_m = {k: avg_me.get(k,0)-avg_duo.get(k,0) for k in avg_me if isinstance(avg_me[k],(int,float))}
                 diff_d = {k: avg_duo.get(k,0)-avg_me.get(k,0) for k in avg_duo if isinstance(avg_duo[k],(int,float))}
 
-                # Passage de l'ID complet (Name#Tag) et de la région à la carte
                 with col1: d_card(t_safe, ch_me, avg_me, bdg_me, ROLE_ICONS.get(r_me,"UNK"), diff_m, '#00c6ff', riot_id_input, region_select)
                 with col2: d_card(duo_name, ch_duo, avg_duo, bdg_duo, ROLE_ICONS.get(r_duo,"UNK"), diff_d, '#ff0055', duo_full_id, region_select)
 
