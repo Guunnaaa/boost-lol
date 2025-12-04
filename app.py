@@ -12,7 +12,7 @@ import time
 import os
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V73 (Responsive Fix)", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V74 (DPM Profile Buttons)", layout="wide")
 
 # --- API KEY ---
 try:
@@ -47,6 +47,7 @@ TRANSLATIONS = {
         "btn_scan": "LANCER L'ANALYSE",
         "placeholder": "Exemple: Kameto#EUW",
         "label_id": "Riot ID", "lbl_region": "RÉGION", "lbl_mode": "MODE", "dpm_btn": "🔗 Voir sur dpm.lol",
+        "btn_profile": "Profil DPM", # AJOUT
         "lbl_duo_detected": "🚨 DUO DÉTECTÉ AVEC {duo} 🚨",
         
         "v_hyper": "CARRY MACHINE", "s_hyper": "{target} inflige des dégâts monstrueux comparé à {duo}",
@@ -68,7 +69,8 @@ TRANSLATIONS = {
     },
     "EN": {
         "title": "LoL Duo Analyst", "btn_scan": "START ANALYSIS", "placeholder": "Example: Faker#KR1",
-        "label_id": "Riot ID", "lbl_region": "REGION", "lbl_mode": "MODE", "dpm_btn": "🔗 Check dpm.lol", 
+        "label_id": "Riot ID", "lbl_region": "REGION", "lbl_mode": "MODE", "dpm_btn": "🔗 Check dpm.lol",
+        "btn_profile": "DPM Profile", # AJOUT
         "lbl_duo_detected": "🚨 DUO DETECTED WITH {duo} 🚨",
         
         "v_hyper": "DMG CARRY", "s_hyper": "{target} is dealing massive damage compared to {duo}",
@@ -84,10 +86,10 @@ TRANSLATIONS = {
         "solo": "SOLO PLAYER", "solo_sub": "No recurring partner found.",
         "loading": "Analyzing...", "q_surv": "Unkillable", "q_dmg": "Heavy Hitter", "q_obj": "Destroyer", "q_vis": "Map Control",
         "f_feed": "Too fragile", "f_blind": "Blind", "f_afk": "Low Dmg", "error_no_games": "No games found.", "error_hint": "Check Region."
-    }
+    },
+    "ES": {"title":"Analista LoL","btn_scan":"ANALIZAR","placeholder":"Ejemplo: Ibai#EUW","label_id":"Riot ID","lbl_region":"REGIÓN","lbl_mode":"MODO","dpm_btn":"Ver dpm.lol","btn_profile":"Perfil DPM","lbl_duo_detected":"🚨 DUO DETECTADO CON {duo} 🚨","v_hyper":"MVP TOTAL","s_hyper":"Domina a {duo}","v_tactician":"ESTRATEGA","s_tactician":"Macro para {duo}","v_fighter":"GLADIADOR","s_fighter":"Daño","v_solid":"DUO SOLIDO","s_solid":"Sinergia con {duo}","v_passive":"PASIVO","s_passive":"Seguro","v_struggle":"DIFICULTAD","s_struggle":"Sufre vs {duo}","solo":"SOLO","solo_sub":"Sin duo","loading":"Cargando...","role_hyper":"CARRY","role_lead":"LIDER","role_equal":"SOCIO","role_supp":"APOYO","role_gap":"NOVATO","q_surv":"Inmortal","q_dmg":"Daño","q_obj":"Torres","q_vis":"Vision","q_bal":"Balance","q_supp":"Support","f_feed":"Muere","f_afk":"Poco daño","f_no_obj":"Sin obj","f_blind":"Ciego","f_farm":"Farm","f_ok":"Bien","stats":"STATS","combat":"COMBATE","eco":"ECONOMIA","vision":"VISION","error_no_games":"Error","error_hint":"Region?","v_survivor":"INMORTAL","s_survivor":"{target} sobrevive","v_breacher":"DESTRUCTOR","s_breacher":"Torres","v_passenger":"PASAJERO","s_passenger":"Carreado","v_feeder":"FEEDER","s_feeder":"Muere mucho"},
+    "KR": {"title":"LoL 듀오 분석","btn_scan":"분석 시작","placeholder":"예: Hide on bush#KR1","label_id":"Riot ID","lbl_region":"지역","lbl_mode":"모드","dpm_btn":"dpm.lol 확인","btn_profile":"DPM 프로필","lbl_duo_detected":"🚨 {duo} 와 듀오 감지 🚨","v_hyper":"하드 캐리","s_hyper":"{target} > {duo}","v_tactician":"전략가","s_tactician":"운영","v_fighter":"전투광","s_fighter":"딜","v_solid":"완벽 듀오","s_solid":"{target} & {duo}","v_passive":"버스","s_passive":"안전","v_struggle":"고전","s_struggle":"역부족","solo":"솔로","solo_sub":"듀오 없음","loading":"분석 중...","role_hyper":"캐리","role_lead":"리더","role_equal":"파트너","role_supp":"서포터","role_gap":"신입","q_surv":"생존","q_dmg":"딜량","q_obj":"철거","q_vis":"시야","q_bal":"밸런스","q_supp":"서폿","f_feed":"데스","f_afk":"딜부족","f_no_obj":"운영부족","f_blind":"시야부족","f_farm":"CS","f_ok":"굿","stats":"통계","combat":"전투","eco":"경제","vision":"시야","error_no_games":"없음","error_hint":"지역?","v_survivor":"불사신","s_survivor":"생존왕","v_breacher":"철거반","s_breacher":"타워","v_passenger":"탑승","s_passenger":"버스탐","v_feeder":"위험","s_feeder":"데스 많음"}
 }
-TRANSLATIONS["ES"] = TRANSLATIONS["EN"]
-TRANSLATIONS["KR"] = TRANSLATIONS["EN"]
 
 # --- MAP DRAPEAUX ---
 LANG_MAP = {"🇫🇷 FR": "FR", "🇺🇸 EN": "EN", "🇪🇸 ES": "ES", "🇰🇷 KR": "KR"}
@@ -151,10 +153,13 @@ st.markdown(f"""
         background: rgba(20, 20, 20, 0.8); border: 2px solid #333;
     }}
     
+    /* STYLE BOUTONS DPM */
     .dpm-btn {{
         background: rgba(37, 99, 235, 0.2); color: #60a5fa !important; padding: 5px 10px;
         border-radius: 6px; text-decoration: none; font-size: 12px; border: 1px solid #2563eb;
+        display: inline-block; transition: 0.2s;
     }}
+    .dpm-btn:hover {{ background: rgba(37, 99, 235, 0.4); }}
 
     .stButton > button {{
         width: 100%; height: 55px; background: linear-gradient(135deg, #ff0055, #cc0044);
@@ -217,6 +222,19 @@ def get_champ_url(champ_name):
 def safe_format(text, target, duo):
     try: return text.format(target=html.escape(str(target)), duo=html.escape(str(duo)))
     except: return text
+
+def get_dpm_url(riot_id_str, region_code):
+    """Génère le lien vers le profil dpm.lol"""
+    try:
+        if "#" in riot_id_str:
+            name, tag = riot_id_str.split("#")
+            # Map simple des régions pour dpm.lol (format slug)
+            r_map = {"EUW1": "euw", "NA1": "na", "KR": "kr", "EUN1": "eune", "TR1": "tr"}
+            r_slug = r_map.get(region_code, "euw")
+            return f"https://www.dpm.lol/{r_slug}/{name}-{tag}"
+        return "https://dpm.lol"
+    except:
+        return "https://dpm.lol"
 
 # --- LOGIQUE SCORE & STYLE ---
 def determine_playstyle(stats, role, lang_dict):
@@ -338,9 +356,14 @@ if submitted:
                         with data_lock:
                             for p in parts:
                                 if p['teamId'] == me['teamId'] and p['puuid'] != puuid:
+                                    # Stockage amélioré avec TAG pour le lien DPM
                                     gid = f"{p.get('riotIdGameName')}#{p.get('riotIdTagLine')}"
                                     if gid not in duo_data:
-                                        duo_data[gid] = {'name': p.get('riotIdGameName'), 'games': 0, 'wins': 0, 'champs': [], 'roles': [], 's_duo': [], 's_me': []}
+                                        duo_data[gid] = {
+                                            'name': p.get('riotIdGameName'),
+                                            'tag': p.get('riotIdTagLine'), # AJOUT IMPORTANT POUR LE LIEN
+                                            'games': 0, 'wins': 0, 'champs': [], 'roles': [], 's_duo': [], 's_me': []
+                                        }
                                     d = duo_data[gid]
                                     d['games'] += 1
                                     if p['win']: d['wins'] += 1
@@ -365,6 +388,9 @@ if submitted:
             if best_duo and max_g >= 2:
                 g = best_duo['games']
                 duo_name = html.escape(best_duo['name'])
+                # Création de l'ID complet pour le lien DPM du duo
+                duo_full_id = f"{best_duo['name']}#{best_duo['tag']}"
+                
                 t_safe = html.escape(target_name)
                 wr = int((best_duo['wins']/g)*100)
                 
@@ -415,7 +441,6 @@ if submitted:
 
                 components.html(f"<script>window.parent.document.querySelector('.verdict-box').scrollIntoView({{behavior:'smooth'}});</script>", height=0)
 
-                # MODIFICATION : clamp() pour la taille du titre responsive
                 st.markdown(f"""
                 <div class="verdict-box" style="border-color:{color}">
                     <div style="font-size:14px; font-weight:700; color:#aaa; margin-bottom:5px; text-transform:uppercase;">{safe_format(T['lbl_duo_detected'], target=t_safe, duo=duo_name)}</div>
@@ -434,9 +459,13 @@ if submitted:
                 bdg_me = determine_playstyle(avg_me, r_me, T)
                 bdg_duo = determine_playstyle(avg_duo, r_duo, T)
                 
-                def d_card(n, c, s, b, r_i, diff, clr):
+                # --- MODIFICATION: AJOUT DU BOUTON DPM DANS LA CARTE ---
+                def d_card(n, c, s, b, r_i, diff, clr, full_id, region):
                     bdg_h = "".join([f"<span class='badge {x[1]}'>{x[0]}</span>" for x in b])
                     ch_h = "".join([f"<img src='{get_champ_url(x)}' style='width:55px; border-radius:50%; border:2px solid #333; margin:4px;'>" for x in c])
+                    
+                    # Génération du lien DPM
+                    dpm_url = get_dpm_url(full_id, region)
                     
                     def sl(l, v, d_v, p=False, k=False):
                         val_str = f"{int(v*100)}%" if p else (f"{v:.2f}" if k else (f"{int(v/1000)}k" if v>1000 else f"{int(v)}"))
@@ -450,7 +479,6 @@ if submitted:
                         if pct_val > 0: dh = f"<span class='stat-diff pos'>+{int(pct_val)}%</span>"
                         elif pct_val < 0: dh = f"<span class='stat-diff neg'>{int(pct_val)}%</span>"
                         else: dh = f"<span class='stat-diff neutral'>=</span>"
-                        
                         return f"""<div class="stat-item"><div class="stat-val-container"><div class="stat-val">{val_str}</div>{dh}</div><div class="stat-lbl">{l}</div></div>"""
 
                     gr = f"""<div class="stat-grid">
@@ -461,13 +489,24 @@ if submitted:
                         {sl("OBJ", s.get('obj',0), diff.get('obj',0))}
                         {sl("GOLD/M", s.get('gold_min',0), diff.get('gold_min',0))}
                     </div>"""
-                    st.markdown(f"""<div class="player-card" style="border-top: 4px solid {clr};"><div class="player-name">{n}</div><div class="player-sub">{r_i}</div><div style="margin:10px 0;">{bdg_h}</div><div style="margin-bottom:15px;">{ch_h}</div>{gr}</div>""", unsafe_allow_html=True)
+                    
+                    # HTML mis à jour avec le bouton DPM
+                    st.markdown(f"""
+                    <div class="player-card" style="border-top: 4px solid {clr};">
+                        <div class="player-name">{n}</div>
+                        <a href="{dpm_url}" target="_blank" class="dpm-btn" style="margin-bottom: 10px;">{T['btn_profile']}</a>
+                        <div class="player-sub">{r_i}</div>
+                        <div style="margin:10px 0;">{bdg_h}</div>
+                        <div style="margin-bottom:15px;">{ch_h}</div>
+                        {gr}
+                    </div>""", unsafe_allow_html=True)
 
                 diff_m = {k: avg_me.get(k,0)-avg_duo.get(k,0) for k in avg_me if isinstance(avg_me[k],(int,float))}
                 diff_d = {k: avg_duo.get(k,0)-avg_me.get(k,0) for k in avg_duo if isinstance(avg_duo[k],(int,float))}
 
-                with col1: d_card(t_safe, ch_me, avg_me, bdg_me, ROLE_ICONS.get(r_me,"UNK"), diff_m, '#00c6ff')
-                with col2: d_card(duo_name, ch_duo, avg_duo, bdg_duo, ROLE_ICONS.get(r_duo,"UNK"), diff_d, '#ff0055')
+                # Passage de l'ID complet (Name#Tag) et de la région à la carte
+                with col1: d_card(t_safe, ch_me, avg_me, bdg_me, ROLE_ICONS.get(r_me,"UNK"), diff_m, '#00c6ff', riot_id_input, region_select)
+                with col2: d_card(duo_name, ch_duo, avg_duo, bdg_duo, ROLE_ICONS.get(r_duo,"UNK"), diff_d, '#ff0055', duo_full_id, region_select)
 
             else:
                 st.markdown(f"""<div class="verdict-box" style="border-color:#888;"><div style="font-size:32px; font-weight:900; color:#888;">{T["solo"]}</div><div style="font-size:16px; color:#aaa;">{T["solo_sub"]}</div></div>""", unsafe_allow_html=True)
