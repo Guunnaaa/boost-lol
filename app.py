@@ -12,7 +12,7 @@ import time
 import os
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V77 (Final Link Fix)", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V78 (Duo Link Fix)", layout="wide")
 
 # --- API KEY ---
 try:
@@ -171,7 +171,6 @@ st.markdown(f"""
         background: #1d4ed8;
         transform: translateY(-2px);
     }}
-    
     .dpm-btn-header {{ 
         background: rgba(37, 99, 235, 0.2); color: #60a5fa !important; padding: 5px 10px;
         border-radius: 6px; text-decoration: none; font-size: 12px; border: 1px solid #2563eb;
@@ -244,8 +243,9 @@ def get_dpm_url(riot_id_str):
     try:
         if "#" in riot_id_str:
             name, tag = riot_id_str.split("#")
-            name = quote(name) # Sécurité pour les espaces
+            name = quote(name) # Sécurité
             tag = quote(tag)
+            if tag == "None" or not tag: return "https://dpm.lol" # Protection anti-None
             return f"https://dpm.lol/{name}-{tag}"
         return "https://dpm.lol"
     except:
@@ -300,6 +300,12 @@ def safe_request(url):
 @st.cache_data(ttl=600)
 def get_puuid(name, tag, region, api_key):
     return safe_request(f"https://{region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{name}/{tag}?api_key={api_key}")
+
+@st.cache_data(ttl=3600)
+def get_account_by_puuid(puuid, region, api_key):
+    # AJOUT IMPORTANT: Récupérer Name/Tag frais via PUUID
+    r = safe_request(f"https://{region}.api.riotgames.com/riot/account/v1/accounts/by-puuid/{puuid}?api_key={api_key}")
+    return r.json() if r else None
 
 @st.cache_data(ttl=120)
 def get_matches(puuid, region, api_key, q_id):
@@ -376,6 +382,7 @@ if submitted:
                                         duo_data[gid] = {
                                             'name': p.get('riotIdGameName'),
                                             'tag': p.get('riotIdTagLine'),
+                                            'puuid': p.get('puuid'), # AJOUT POUR FIX TAG
                                             'games': 0, 'wins': 0, 'champs': [], 'roles': [], 's_duo': [], 's_me': []
                                         }
                                     d = duo_data[gid]
@@ -400,10 +407,22 @@ if submitted:
                 if v['games'] > max_g: max_g = v['games']; best_duo = v
             
             if best_duo and max_g >= 2:
-                g = best_duo['games']
-                duo_name = html.escape(best_duo['name'])
-                duo_full_id = f"{best_duo['name']}#{best_duo['tag']}"
+                # --- FIX TAG MANQUANT ---
+                # Si le tag est manquant (None), on le fetch via le PUUID qu'on a stocké
+                real_name = best_duo['name']
+                real_tag = best_duo['tag']
                 
+                if not real_tag or real_tag == "None":
+                    with st.spinner("Fetching duo details..."):
+                        acc_data = get_account_by_puuid(best_duo['puuid'], region, API_KEY)
+                        if acc_data:
+                            real_name = acc_data.get('gameName', real_name)
+                            real_tag = acc_data.get('tagLine', real_tag)
+
+                duo_full_id = f"{real_name}#{real_tag}"
+                duo_name_display = html.escape(real_name)
+                
+                g = best_duo['games']
                 t_safe = html.escape(target_name)
                 wr = int((best_duo['wins']/g)*100)
                 
@@ -438,25 +457,25 @@ if submitted:
                 diff_vis = (avg_me['vis_min'] - avg_duo['vis_min']) / 0.8
                 diff_obj = (avg_me['obj'] - avg_duo['obj']) / 3000
                 
-                title, color, sub = T["v_solid"], "#00ff99", safe_format(T["s_solid"], t_safe, duo_name)
+                title, color, sub = T["v_solid"], "#00ff99", safe_format(T["s_solid"], t_safe, duo_name_display)
                 
                 if ratio > 1.15:
                     max_diff = max(diff_kda, diff_dmg, diff_vis, diff_obj)
-                    if max_diff == diff_kda: title, color, sub = T["v_survivor"], "#FFD700", safe_format(T["s_survivor"], t_safe, duo_name)
-                    elif max_diff == diff_vis: title, color, sub = T["v_tactician"], "#00BFFF", safe_format(T["s_tactician"], t_safe, duo_name)
-                    elif max_diff == diff_obj: title, color, sub = T["v_breacher"], "#FFA500", safe_format(T["s_breacher"], t_safe, duo_name)
-                    else: title, color, sub = T["v_hyper"], "#ff0055", safe_format(T["s_hyper"], t_safe, duo_name)
+                    if max_diff == diff_kda: title, color, sub = T["v_survivor"], "#FFD700", safe_format(T["s_survivor"], t_safe, duo_name_display)
+                    elif max_diff == diff_vis: title, color, sub = T["v_tactician"], "#00BFFF", safe_format(T["s_tactician"], t_safe, duo_name_display)
+                    elif max_diff == diff_obj: title, color, sub = T["v_breacher"], "#FFA500", safe_format(T["s_breacher"], t_safe, duo_name_display)
+                    else: title, color, sub = T["v_hyper"], "#ff0055", safe_format(T["s_hyper"], t_safe, duo_name_display)
                 elif ratio < 0.85:
                     min_diff = min(diff_kda, diff_dmg, diff_vis)
-                    if min_diff == diff_kda: title, color, sub = T["v_feeder"], "#ff4444", safe_format(T["s_feeder"], t_safe, duo_name)
-                    elif min_diff == diff_dmg: title, color, sub = T["v_passenger"], "#888888", safe_format(T["s_passenger"], t_safe, duo_name)
-                    else: title, color, sub = T["v_struggle"], "#ff4444", safe_format(T["s_struggle"], t_safe, duo_name)
+                    if min_diff == diff_kda: title, color, sub = T["v_feeder"], "#ff4444", safe_format(T["s_feeder"], t_safe, duo_name_display)
+                    elif min_diff == diff_dmg: title, color, sub = T["v_passenger"], "#888888", safe_format(T["s_passenger"], t_safe, duo_name_display)
+                    else: title, color, sub = T["v_struggle"], "#ff4444", safe_format(T["s_struggle"], t_safe, duo_name_display)
 
                 components.html(f"<script>window.parent.document.querySelector('.verdict-box').scrollIntoView({{behavior:'smooth'}});</script>", height=0)
 
                 st.markdown(f"""
                 <div class="verdict-box" style="border-color:{color}">
-                    <div style="font-size:14px; font-weight:700; color:#aaa; margin-bottom:5px; text-transform:uppercase;">{safe_format(T['lbl_duo_detected'], target=t_safe, duo=duo_name)}</div>
+                    <div style="font-size:14px; font-weight:700; color:#aaa; margin-bottom:5px; text-transform:uppercase;">{safe_format(T['lbl_duo_detected'], target=t_safe, duo=duo_name_display)}</div>
                     <div style="font-size:clamp(30px, 6vw, 45px); font-weight:900; color:{color}; margin-bottom:10px; line-height:1.1;">{title}</div>
                     <div style="font-size:18px; color:#eee; font-style:italic;">"{sub}"</div>
                     <div style="margin-top:15px; color:#888; font-weight:600;">{g} Games • {wr}% Winrate</div>
@@ -466,7 +485,7 @@ if submitted:
                 def norm(val, max_v): return min(100, (val / max_v) * 100)
                 d_me = [norm(avg_me.get('dmg_min',0), 1000), norm(avg_me.get('gold_min',0), 600), norm(avg_me.get('vis_min',0), 2.5), norm(avg_me.get('obj',0), 8000), norm(avg_me.get('kda',0), 5)]
                 d_duo = [norm(avg_duo.get('dmg_min',0), 1000), norm(avg_duo.get('gold_min',0), 600), norm(avg_duo.get('vis_min',0), 2.5), norm(avg_duo.get('obj',0), 8000), norm(avg_duo.get('kda',0), 5)]
-                st.plotly_chart(create_radar([d_me, d_duo], [t_safe, duo_name], ['#00c6ff', '#ff0055']), use_container_width=True, config={'displayModeBar': False})
+                st.plotly_chart(create_radar([d_me, d_duo], [t_safe, duo_name_display], ['#00c6ff', '#ff0055']), use_container_width=True, config={'displayModeBar': False})
                 
                 col1, col2 = st.columns(2, gap="large")
                 bdg_me = determine_playstyle(avg_me, r_me, T)
@@ -515,7 +534,7 @@ if submitted:
                 diff_d = {k: avg_duo.get(k,0)-avg_me.get(k,0) for k in avg_duo if isinstance(avg_duo[k],(int,float))}
 
                 with col1: d_card(t_safe, ch_me, avg_me, bdg_me, ROLE_ICONS.get(r_me,"UNK"), diff_m, '#00c6ff', riot_id_input)
-                with col2: d_card(duo_name, ch_duo, avg_duo, bdg_duo, ROLE_ICONS.get(r_duo,"UNK"), diff_d, '#ff0055', duo_full_id)
+                with col2: d_card(duo_name_display, ch_duo, avg_duo, bdg_duo, ROLE_ICONS.get(r_duo,"UNK"), diff_d, '#ff0055', duo_full_id)
 
             else:
                 st.markdown(f"""<div class="verdict-box" style="border-color:#888;"><div style="font-size:32px; font-weight:900; color:#888;">{T["solo"]}</div><div style="font-size:16px; color:#aaa;">{T["solo_sub"]}</div></div>""", unsafe_allow_html=True)
