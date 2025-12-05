@@ -9,8 +9,8 @@ import html
 import time
 import os
 
-# --- 1. CONFIGURATION & SESSION ---
-st.set_page_config(page_title="LoL Duo Analyst V80 (Debug Mode)", layout="wide")
+# --- 1. CONFIGURATION ---
+st.set_page_config(page_title="LoL Duo Analyst V81 (Safe Mode)", layout="wide")
 
 if 'api_session' not in st.session_state:
     st.session_state.api_session = requests.Session()
@@ -22,7 +22,7 @@ except (FileNotFoundError, KeyError):
     API_KEY = os.environ.get("RIOT_API_KEY")
 
 if not API_KEY:
-    st.error("⚠️ CLÉ API MANQUANTE. Ajoute RIOT_API_KEY dans les secrets ou variables d'env.")
+    st.error("⚠️ CLÉ API MANQUANTE.")
     st.stop()
 
 # --- 3. CONSTANTES ---
@@ -90,30 +90,26 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 5. COUCHE API DEBUGGÉE ---
-def safe_request(url, retry=True):
-    """Requête sécurisée avec gestion des erreurs explicites."""
-    try:
-        resp = st.session_state.api_session.get(url, timeout=5)
-        
-        if resp.status_code == 200:
-            return resp
-        elif resp.status_code == 403:
-            st.error("🚨 CLÉ API RIOT EXPIRÉE OU INVALIDE (Erreur 403).")
-            st.stop() # On arrête tout ici pour avertir l'user
-        elif resp.status_code == 404:
-            return None # Donnée pas trouvée, c'est normal
-        elif resp.status_code == 429:
-            if retry:
-                time.sleep(1.5) # On attend un peu
-                return safe_request(url, retry=False) # On réessaie une fois
-            else:
-                st.warning("⚠️ API Surchargée (Rate Limit). Réessaie dans quelques secondes.")
+# --- 5. COUCHE API SÉCURISÉE ---
+def safe_request(url, retries=2):
+    """Requête robuste avec Retry Backoff"""
+    for i in range(retries + 1):
+        try:
+            resp = st.session_state.api_session.get(url, timeout=5)
+            if resp.status_code == 200:
+                return resp
+            elif resp.status_code == 429: # Rate Limit
+                wait = int(resp.headers.get("Retry-After", 2))
+                time.sleep(wait)
+                continue # Retry
+            elif resp.status_code == 403: # Key Expired
+                return "403"
+            elif resp.status_code == 404: # Not Found
                 return None
-        return None
-    except Exception as e:
-        # st.error(f"Erreur connexion: {e}") # Décommenter pour debug profond
-        return None
+        except:
+            time.sleep(1)
+            continue
+    return None
 
 @st.cache_data(ttl=86400)
 def get_dd_version():
@@ -151,6 +147,8 @@ def extract_stats(p):
 def process_single_match(m_id, region, api_key, my_puuid):
     # Appel Match Detail
     data_raw = safe_request(f"https://{region}.api.riotgames.com/lol/match/v5/matches/{m_id}?api_key={api_key}")
+    
+    if data_raw == "403": return "KEY_EXPIRED"
     if not data_raw: return None
     
     data = data_raw.json()
@@ -230,33 +228,30 @@ if submitted:
             # 1. FETCH PUUID
             acc_req = safe_request(f"https://{region_api}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{quote(name_raw)}/{tag}?api_key={API_KEY}")
             
-            if not acc_req:
-                st.error(f"❌ Joueur introuvable ou erreur API. Vérifie le pseudo {name_raw}#{tag} et la région {region}.")
-                st.stop()
+            if acc_req == "403": st.error("🚨 CLÉ API EXPIRÉE (403)."); st.stop()
+            if not acc_req: st.error("❌ Joueur introuvable."); st.stop()
             
             puuid = acc_req.json().get("puuid")
             
             # 2. FETCH MATCH LIST
             matches_req = safe_request(f"https://{region_api}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue={QUEUE_MAP[queue_label]}&start=0&count=15&api_key={API_KEY}")
             
-            if not matches_req:
-                st.warning(T["error_no_games"])
-                st.stop()
+            if matches_req == "403": st.error("🚨 CLÉ API EXPIRÉE (403)."); st.stop()
+            if not matches_req or not matches_req.json(): st.warning(T["error_no_games"]); st.stop()
                 
             match_ids = matches_req.json()
-            if not match_ids:
-                st.warning(f"{T['error_no_games']} ({queue_label})")
-                st.stop()
 
-            # 3. PROCESS MATCHES
+            # 3. PROCESS MATCHES (SAFE THREADS)
             agg_data = defaultdict(lambda: {'name': '', 'tag': '', 'puuid': '', 'games': 0, 'wins': 0, 'champs': [], 'roles': [], 's_duo': [], 's_me': []})
             target_display_name = riot_id_input
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            
+            # WORKERS RÉDUITS A 4 POUR ÉVITER LE RATE LIMIT
+            with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
                 futures = [executor.submit(process_single_match, m, region_api, API_KEY, puuid) for m in match_ids]
                 for future in concurrent.futures.as_completed(futures):
                     try:
                         res = future.result()
+                        if res == "KEY_EXPIRED": st.error("🚨 CLÉ API EXPIRÉE PENDANT L'ANALYSE."); st.stop()
                         if not res: continue
                         target_display_name = res['target_name']
                         for entry in res['entries']:
@@ -271,7 +266,8 @@ if submitted:
                     except: pass
 
             if not agg_data:
-                st.warning("Aucun duo trouvé dans les parties récentes.")
+                st.error("⚠️ AUCUNE DONNÉE RÉCUPÉRÉE.")
+                st.info("Causes possibles : 1. API Rate Limit (Trop de requêtes) 2. Aucune game trouvée avec ce PUUID 3. Erreur serveur Riot.")
                 st.stop()
                 
             best_duo = max(agg_data.values(), key=lambda x: x['games'])
@@ -283,7 +279,7 @@ if submitted:
                 real_name, real_tag = best_duo['name'], best_duo['tag']
                 if not real_tag or real_tag == "None":
                     acc_check = safe_request(f"https://{region_api}.api.riotgames.com/riot/account/v1/accounts/by-puuid/{best_duo['puuid']}?api_key={API_KEY}")
-                    if acc_check:
+                    if acc_check and acc_check != "403":
                         d_json = acc_check.json()
                         real_name, real_tag = d_json.get('gameName', real_name), d_json.get('tagLine', real_tag)
 
