@@ -10,9 +10,8 @@ import time
 import os
 
 # --- 1. CONFIGURATION & SESSION ---
-st.set_page_config(page_title="LoL Duo Analyst V79 (Optimized)", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V80 (Debug Mode)", layout="wide")
 
-# Session pour réutiliser les connexions TCP (Gain de perf important)
 if 'api_session' not in st.session_state:
     st.session_state.api_session = requests.Session()
 
@@ -23,10 +22,10 @@ except (FileNotFoundError, KeyError):
     API_KEY = os.environ.get("RIOT_API_KEY")
 
 if not API_KEY:
-    st.error("⚠️ API Key missing. Add RIOT_API_KEY to Streamlit secrets or Env Vars.")
+    st.error("⚠️ CLÉ API MANQUANTE. Ajoute RIOT_API_KEY dans les secrets ou variables d'env.")
     st.stop()
 
-# --- 3. CONSTANTES & ASSETS ---
+# --- 3. CONSTANTES ---
 BACKGROUND_IMAGE_URL = "https://media.discordapp.net/attachments/1065027576572518490/1179469739770630164/face_tiled.jpg?ex=657a90f2&is=65681bf2&hm=123"
 QUEUE_MAP = {"Ranked Solo/Duo": 420, "Ranked Flex": 440, "Draft Normal": 400, "ARAM": 450, "Arena": 1700}
 ROLE_ICONS = {"TOP": "🛡️ TOP", "JUNGLE": "🌲 JUNGLE", "MIDDLE": "🧙 MID", "BOTTOM": "🏹 ADC", "UTILITY": "🩹 SUPP", "UNKNOWN": "❓ FILL"}
@@ -56,11 +55,9 @@ TRANSLATIONS = {
         "f_feed": "Too fragile", "f_blind": "Blind", "f_afk": "Low Dmg", "error_no_games": "No games found."
     }
 }
-# Fallback simple
 TRANSLATIONS["ES"] = TRANSLATIONS["EN"]
 TRANSLATIONS["KR"] = TRANSLATIONS["EN"]
 
-# --- 4. CSS (INJECTÉ UNE SEULE FOIS) ---
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap');
@@ -93,19 +90,32 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 5. COUCHE API OPTIMISÉE ---
-def safe_request(url):
-    """Effectue une requête via la session persistante avec gestion d'erreurs."""
+# --- 5. COUCHE API DEBUGGÉE ---
+def safe_request(url, retry=True):
+    """Requête sécurisée avec gestion des erreurs explicites."""
     try:
-        resp = st.session_state.api_session.get(url, timeout=4)
-        if resp.status_code == 200: return resp
-        elif resp.status_code == 429: 
-            time.sleep(1) # Petit backoff si rate limit
-            return None 
+        resp = st.session_state.api_session.get(url, timeout=5)
+        
+        if resp.status_code == 200:
+            return resp
+        elif resp.status_code == 403:
+            st.error("🚨 CLÉ API RIOT EXPIRÉE OU INVALIDE (Erreur 403).")
+            st.stop() # On arrête tout ici pour avertir l'user
+        elif resp.status_code == 404:
+            return None # Donnée pas trouvée, c'est normal
+        elif resp.status_code == 429:
+            if retry:
+                time.sleep(1.5) # On attend un peu
+                return safe_request(url, retry=False) # On réessaie une fois
+            else:
+                st.warning("⚠️ API Surchargée (Rate Limit). Réessaie dans quelques secondes.")
+                return None
         return None
-    except: return None
+    except Exception as e:
+        # st.error(f"Erreur connexion: {e}") # Décommenter pour debug profond
+        return None
 
-@st.cache_data(ttl=86400) # Cache 24h
+@st.cache_data(ttl=86400)
 def get_dd_version():
     try: 
         r = requests.get("https://ddragon.leagueoflegends.com/api/versions.json", timeout=3)
@@ -114,20 +124,7 @@ def get_dd_version():
 
 DD_VERSION = get_dd_version()
 
-@st.cache_data(ttl=3600)
-def get_account_puuid(name, tag, region, key):
-    return safe_request(f"https://{region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{name}/{tag}?api_key={key}")
-
-@st.cache_data(ttl=3600)
-def get_account_by_puuid(puuid, region, key):
-    r = safe_request(f"https://{region}.api.riotgames.com/riot/account/v1/accounts/by-puuid/{puuid}?api_key={key}")
-    return r.json() if r else None
-
-@st.cache_data(ttl=300)
-def get_match_ids(puuid, region, key, queue, count=15):
-    return safe_request(f"https://{region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue={queue}&start=0&count={count}&api_key={key}")
-
-# --- 6. LOGIQUE MÉTIER & TRAITEMENT (SANS LOCKS) ---
+# --- 6. LOGIQUE MÉTIER ---
 def get_champ_url(name):
     if not name: return "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Poro_0.jpg"
     clean = str(name).replace(" ", "").replace("'", "").replace(".", "")
@@ -141,7 +138,6 @@ def get_dpm_url(riot_id):
     return "https://dpm.lol"
 
 def extract_stats(p):
-    """Extrait les stats brutes d'un participant JSON."""
     c = p.get('challenges', {})
     return {
         'kills': p.get('kills',0), 'deaths': p.get('deaths',0), 'assists': p.get('assists',0),
@@ -153,13 +149,13 @@ def extract_stats(p):
     }
 
 def process_single_match(m_id, region, api_key, my_puuid):
-    """Traite un match unique et renvoie les données sans effet de bord (Pure Function)."""
+    # Appel Match Detail
     data_raw = safe_request(f"https://{region}.api.riotgames.com/lol/match/v5/matches/{m_id}?api_key={api_key}")
     if not data_raw: return None
     
     data = data_raw.json()
     info = data.get('info', {})
-    if info.get('gameDuration', 0) < 300: return None # Skip short games
+    if info.get('gameDuration', 0) < 300: return None
 
     parts = info.get('participants', [])
     me = next((p for p in parts if p['puuid'] == my_puuid), None)
@@ -169,11 +165,9 @@ def process_single_match(m_id, region, api_key, my_puuid):
     my_stats = extract_stats(me)
     duo_entries = []
 
-    # Identifier les alliés
     for p in parts:
         if p['teamId'] == me['teamId'] and p['puuid'] != my_puuid:
             d_stats = extract_stats(p)
-            # Calcul des stats normalisées ici pour gagner du temps
             for s in [my_stats, d_stats]:
                 s['dmg_min'] = s['dmg'] / duration_min
                 s['gold_min'] = s['gold'] / duration_min
@@ -190,7 +184,6 @@ def process_single_match(m_id, region, api_key, my_puuid):
 
 def determine_badges(stats, role, lang_dict):
     badges = []
-    # Logique simplifiée et compacte
     if stats.get('kda', 0) >= 4.0: badges.append((lang_dict.get("q_surv", "Survival"), "b-gold"))
     if stats.get('vis_min', 0) >= 2.0 or (role == "UTILITY" and stats.get('vis_min', 0) >= 2.5): badges.append((lang_dict.get("q_vis", "Oracle"), "b-blue")) 
     if stats.get('kp', 0) >= 0.65: badges.append(("Teamplayer", "b-green"))
@@ -201,7 +194,6 @@ def determine_badges(stats, role, lang_dict):
     if stats.get('kda', 0) < 1.5: badges.append((lang_dict.get("f_feed", "Grey Screen"), "b-red"))
     if stats.get('vis_min', 0) < 0.4 and role != "ADC": badges.append((lang_dict.get("f_blind", "Blind"), "b-red"))
     if stats.get('dmg_min', 0) < 300 and role not in ["UTILITY", "JUNGLE"]: badges.append((lang_dict.get("f_afk", "AFK"), "b-blue"))
-
     return badges[:3] if badges else [("Standard", "b-blue")]
 
 # --- 7. UI INTERFACE ---
@@ -229,43 +221,44 @@ with st.form("search_form"):
 # --- 8. EXÉCUTION PRINCIPALE ---
 if submitted:
     if "#" not in riot_id_input:
-        st.error("⚠️ Name#TAG required")
+        st.error("⚠️ Format invalide. Utilise: Nom#TAG")
     else:
         name_raw, tag = map(str.strip, riot_id_input.split("#"))
         region_api = "europe" if region in ["EUW1", "EUN1", "TR1", "RU"] else ("asia" if region == "KR" else "americas")
         
         with st.spinner(T["loading"]):
-            # 1. Fetch Account & Matchlist
-            acc = get_account_puuid(quote(name_raw), tag, region_api, API_KEY)
-            if not acc or acc.status_code != 200:
-                st.error(T["error_no_games"])
+            # 1. FETCH PUUID
+            acc_req = safe_request(f"https://{region_api}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{quote(name_raw)}/{tag}?api_key={API_KEY}")
+            
+            if not acc_req:
+                st.error(f"❌ Joueur introuvable ou erreur API. Vérifie le pseudo {name_raw}#{tag} et la région {region}.")
                 st.stop()
             
-            puuid = acc.json().get("puuid")
-            matches_resp = get_match_ids(puuid, region_api, API_KEY, QUEUE_MAP[queue_label])
-            match_ids = matches_resp.json() if matches_resp and matches_resp.status_code == 200 else []
+            puuid = acc_req.json().get("puuid")
             
-            if not match_ids:
+            # 2. FETCH MATCH LIST
+            matches_req = safe_request(f"https://{region_api}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue={QUEUE_MAP[queue_label]}&start=0&count=15&api_key={API_KEY}")
+            
+            if not matches_req:
                 st.warning(T["error_no_games"])
                 st.stop()
+                
+            match_ids = matches_req.json()
+            if not match_ids:
+                st.warning(f"{T['error_no_games']} ({queue_label})")
+                st.stop()
 
-            # 2. Parallel Processing (Pas de Lock = Vitesse)
-            # Utilisation d'un dictionnaire par défaut pour agréger
+            # 3. PROCESS MATCHES
             agg_data = defaultdict(lambda: {'name': '', 'tag': '', 'puuid': '', 'games': 0, 'wins': 0, 'champs': [], 'roles': [], 's_duo': [], 's_me': []})
             target_display_name = riot_id_input
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-                # Lance les tâches
                 futures = [executor.submit(process_single_match, m, region_api, API_KEY, puuid) for m in match_ids]
-                
-                # Récupère les résultats au fur et à mesure
                 for future in concurrent.futures.as_completed(futures):
                     try:
                         res = future.result()
                         if not res: continue
-                        target_display_name = res['target_name'] # Mise à jour du vrai nom
-                        
-                        # Agrégation dans le thread principal (Rapide en mémoire)
+                        target_display_name = res['target_name']
                         for entry in res['entries']:
                             d = agg_data[entry['id']]
                             d['name'], d['tag'], d['puuid'] = entry['name'], entry['tag'], entry['puuid']
@@ -277,9 +270,8 @@ if submitted:
                             d['s_me'].append(entry['stats_me'])
                     except: pass
 
-            # 3. Trouver le meilleur duo
             if not agg_data:
-                st.warning(T["error_no_games"])
+                st.warning("Aucun duo trouvé dans les parties récentes.")
                 st.stop()
                 
             best_duo = max(agg_data.values(), key=lambda x: x['games'])
@@ -287,28 +279,25 @@ if submitted:
             if best_duo['games'] < 2:
                 st.markdown(f"""<div class="verdict-box" style="border-color:#888;"><div style="font-size:32px; font-weight:900; color:#888;">{T["solo"]}</div><div style="font-size:16px; color:#aaa;">{T["solo_sub"]}</div></div>""", unsafe_allow_html=True)
             else:
-                # 4. Finalisation & Affichage
-                # Check Tag manquant
+                # 4. FIX TAG & DISPLAY
                 real_name, real_tag = best_duo['name'], best_duo['tag']
                 if not real_tag or real_tag == "None":
-                    acc_check = get_account_by_puuid(best_duo['puuid'], region_api, API_KEY)
+                    acc_check = safe_request(f"https://{region_api}.api.riotgames.com/riot/account/v1/accounts/by-puuid/{best_duo['puuid']}?api_key={API_KEY}")
                     if acc_check:
-                        real_name, real_tag = acc_check.get('gameName', real_name), acc_check.get('tagLine', real_tag)
+                        d_json = acc_check.json()
+                        real_name, real_tag = d_json.get('gameName', real_name), d_json.get('tagLine', real_tag)
 
                 duo_display = html.escape(real_name)
                 t_safe = html.escape(target_display_name)
                 duo_full_id = f"{real_name}#{real_tag}"
                 
-                # Calcul Stats Moyennes
                 def avg(l): return {k: sum(d[k] for d in l)/len(l) for k in l[0] if isinstance(l[0][k], (int,float))} if l else {}
                 avg_duo, avg_me = avg(best_duo['s_duo']), avg(best_duo['s_me'])
-                
-                # Calcul KDA & Rôles
                 for s in [avg_duo, avg_me]: s['kda'] = round((s.get('kills',0)+s.get('assists',0))/max(1,s.get('deaths',1)), 2)
+                
                 r_duo = Counter(best_duo['roles']).most_common(1)[0][0] if best_duo['roles'] else "UNKNOWN"
                 r_me = Counter([x['role'] for x in best_duo['s_me']]).most_common(1)[0][0] if best_duo['s_me'] else "UNKNOWN"
 
-                # Verdict Algorithm
                 def get_score(s, r):
                     sc = min(5, s['kda']) + (s['kp']*4) + min(3, (s['vis_min']/(2.0 if r=="UTILITY" else 1.0))*2)
                     sc += min(4, s['dmg_min']/700) if r!="UTILITY" else 0
@@ -316,14 +305,12 @@ if submitted:
                 
                 ratio = get_score(avg_me, r_me) / max(0.1, get_score(avg_duo, r_duo))
                 
-                # Différences pour le titre
                 d_kda = (avg_me['kda'] - avg_duo['kda']) / 1.5
                 d_dmg = (avg_me['dmg_min'] - avg_duo['dmg_min']) / 400
                 d_vis = (avg_me['vis_min'] - avg_duo['vis_min']) / 0.8
                 d_obj = (avg_me['obj'] - avg_duo['obj']) / 3000
 
                 title, color, sub = T["v_solid"], "#00ff99", safe_format(T["s_solid"], t_safe, duo_display)
-                
                 if ratio > 1.15:
                     m = max(d_kda, d_dmg, d_vis, d_obj)
                     if m == d_kda: title, color, sub = T["v_survivor"], "#FFD700", safe_format(T["s_survivor"], t_safe, duo_display)
@@ -336,7 +323,6 @@ if submitted:
                     elif m == d_dmg: title, color, sub = T["v_passenger"], "#888888", safe_format(T["s_passenger"], t_safe, duo_display)
                     else: title, color, sub = T["v_struggle"], "#ff4444", safe_format(T["s_struggle"], t_safe, duo_display)
 
-                # Scroll & Banner
                 components.html(f"<script>window.parent.document.querySelector('.verdict-box').scrollIntoView({{behavior:'smooth'}});</script>", height=0)
                 st.markdown(f"""
                 <div class="verdict-box" style="border-color:{color}">
@@ -346,7 +332,6 @@ if submitted:
                     <div style="margin-top:15px; color:#888; font-weight:600;">{best_duo['games']} Games • {int((best_duo['wins']/best_duo['games'])*100)}% Winrate</div>
                 </div>""", unsafe_allow_html=True)
 
-                # Radar Chart
                 def norm(v, m): return min(100, (v/m)*100)
                 r_cats = ['dmg_min', 'gold_min', 'vis_min', 'obj', 'kda']
                 r_maxs = [1000, 600, 2.5, 8000, 5]
@@ -361,27 +346,21 @@ if submitted:
                     legend=dict(font=dict(color='white'), orientation="h", y=-0.15, x=0.5, xanchor="center", bgcolor='rgba(0,0,0,0)'))
                 st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-                # Player Cards Function
                 def render_card(col, name, champ_list, stats, role, diff_stats, color, full_id):
                     badges = determine_badges(stats, role, T)
                     badges_html = "".join([f"<span class='badge {b[1]}'>{b[0]}</span>" for b in badges])
                     champs_html = "".join([f"<img src='{get_champ_url(x)}' style='width:55px; border-radius:50%; border:2px solid #333; margin:4px;'>" for x in champ_list])
-                    
                     rows = ""
                     labels = [("KDA", 'kda', 1, False), ("KP", 'kp', 100, True), ("DPM", 'dmg_min', 1, False), ("VIS/M", 'vis_min', 1, False), ("OBJ", 'obj', 1, False), ("GOLD/M", 'gold_min', 1, False)]
                     
                     for lbl, key, mult, is_pct in labels:
                         val = stats.get(key, 0)
                         d_val = diff_stats.get(key, 0)
-                        
                         v_str = f"{int(val*100)}%" if is_pct else (f"{val:.2f}" if key=='kda' else (f"{int(val/1000)}k" if val>1000 else f"{int(val)}"))
-                        
-                        # Logic Pct diff
                         if is_pct: pct = d_val
                         else:
                             base = val - d_val
                             pct = (d_val / abs(base)) * 100 if abs(base) > 0.01 else (100 if val > base else 0)
-                        
                         cls = "pos" if pct > 0 else ("neg" if pct < 0 else "neutral")
                         sign = "+" if pct > 0 else ""
                         rows += f"""<div class="stat-item"><div class="stat-val-container"><div class="stat-val">{v_str}</div><span class='stat-diff {cls}'>{sign}{int(pct)}%</span></div><div class="stat-lbl">{lbl}</div></div>"""
@@ -396,7 +375,6 @@ if submitted:
                         <div class="stat-grid">{rows}</div>
                     </div>""", unsafe_allow_html=True)
 
-                # Diff Calculs
                 d_me = {k: avg_me.get(k,0)-avg_duo.get(k,0) for k in avg_me if isinstance(avg_me[k],(int,float))}
                 d_duo = {k: avg_duo.get(k,0)-avg_me.get(k,0) for k in avg_duo if isinstance(avg_duo[k],(int,float))}
 
