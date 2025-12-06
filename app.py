@@ -12,7 +12,7 @@ import time
 import os
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V78 (Duo Link Fix)", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V79 (Stable & Safe)", layout="wide")
 
 # --- API KEY ---
 try:
@@ -26,6 +26,10 @@ if not API_KEY:
 
 # --- ASSETS & CONSTANTES ---
 BACKGROUND_IMAGE_URL = "https://media.discordapp.net/attachments/1065027576572518490/1179469739770630164/face_tiled.jpg?ex=657a90f2&is=65681bf2&hm=123"
+
+# --- PARAMETRES DE SECURITE (SAFE MODE) ---
+MATCH_COUNT = 10   # Réduit de 15 à 10 pour économiser les requêtes
+MAX_WORKERS = 4    # Réduit de 8 à 4 pour éviter le "Rate Limit" instantané
 
 QUEUE_MAP = {
     "Ranked Solo/Duo": 420,
@@ -60,7 +64,7 @@ TRANSLATIONS = {
         "v_feeder": "ZONE DE DANGER", "s_feeder": "{target} passe trop de temps à l'écran gris vs {duo}",
         "v_struggle": "EN DIFFICULTÉ", "s_struggle": "{target} peine à suivre le rythme de {duo}",
 
-        "solo": "LOUP SOLITAIRE", "solo_sub": "Aucun duo récurrent détecté sur 20 parties.",
+        "solo": "LOUP SOLITAIRE", "solo_sub": "Aucun duo récurrent détecté sur 10 parties.",
         "loading": "Analyse tactique en cours...",
         
         "q_surv": "Injouable (KDA)", "q_dmg": "Gros Dégâts", "q_obj": "Destructeur", "q_vis": "Contrôle Map",
@@ -217,7 +221,7 @@ with st.form("search_form"):
     st.markdown("<br>", unsafe_allow_html=True)
     submitted = st.form_submit_button(T["btn_scan"])
 
-# --- HELPERS ---
+# --- HELPERS & API ROBUSTE ---
 @st.cache_data(ttl=3600)
 def get_dd_version():
     try: 
@@ -239,19 +243,18 @@ def safe_format(text, target, duo):
     except: return text
 
 def get_dpm_url(riot_id_str):
-    """Génère le lien vers dpm.lol selon le format: dpm.lol/name-tag"""
     try:
         if "#" in riot_id_str:
             name, tag = riot_id_str.split("#")
-            name = quote(name) # Sécurité
+            name = quote(name)
             tag = quote(tag)
-            if tag == "None" or not tag: return "https://dpm.lol" # Protection anti-None
+            if tag == "None" or not tag: return "https://dpm.lol"
             return f"https://dpm.lol/{name}-{tag}"
         return "https://dpm.lol"
     except:
         return "https://dpm.lol"
 
-# --- LOGIQUE SCORE & STYLE ---
+# LOGIQUE SCORE
 def determine_playstyle(stats, role, lang_dict):
     badges = []
     kda = stats.get('kda', 0)
@@ -288,14 +291,26 @@ def create_radar(data_list, names, colors, title=None):
     )
     return fig
 
-# --- API ---
+# --- API CORE (AVEC RETRY ROBUSTE) ---
 def safe_request(url):
-    try:
-        resp = requests.get(url, timeout=5)
-        if resp.status_code == 200: return resp
-        elif resp.status_code == 429: time.sleep(1); return None 
-        return None
-    except: return None
+    retries = 3
+    for i in range(retries):
+        try:
+            resp = requests.get(url, timeout=5)
+            if resp.status_code == 200:
+                return resp
+            elif resp.status_code == 429: # RATE LIMIT
+                wait = int(resp.headers.get("Retry-After", 2))
+                time.sleep(wait)
+                continue
+            elif resp.status_code == 403: # FORBIDDEN (API KEY EXPIRED)
+                return None
+            else:
+                return None
+        except:
+            time.sleep(1)
+            continue
+    return None
 
 @st.cache_data(ttl=600)
 def get_puuid(name, tag, region, api_key):
@@ -303,13 +318,13 @@ def get_puuid(name, tag, region, api_key):
 
 @st.cache_data(ttl=3600)
 def get_account_by_puuid(puuid, region, api_key):
-    # AJOUT IMPORTANT: Récupérer Name/Tag frais via PUUID
     r = safe_request(f"https://{region}.api.riotgames.com/riot/account/v1/accounts/by-puuid/{puuid}?api_key={api_key}")
     return r.json() if r else None
 
 @st.cache_data(ttl=120)
 def get_matches(puuid, region, api_key, q_id):
-    return safe_request(f"https://{region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue={q_id}&start=0&count=15&api_key={api_key}")
+    # ICI ON UTILISE LE PARAMETRE MATCH_COUNT (10)
+    return safe_request(f"https://{region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue={q_id}&start=0&count={MATCH_COUNT}&api_key={api_key}")
 
 def fetch_match(m_id, region, api_key):
     r = safe_request(f"https://{region}.api.riotgames.com/lol/match/v5/matches/{m_id}?api_key={api_key}")
@@ -347,7 +362,8 @@ if submitted:
             target_name = riot_id_input
             data_lock = threading.Lock()
             
-            with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+            # ICI ON UTILISE MAX_WORKERS (4) POUR LE RATE LIMIT
+            with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
                 future_to_match = {executor.submit(fetch_match, m, region, API_KEY): m for m in match_ids}
                 for future in concurrent.futures.as_completed(future_to_match):
                     try:
@@ -382,7 +398,7 @@ if submitted:
                                         duo_data[gid] = {
                                             'name': p.get('riotIdGameName'),
                                             'tag': p.get('riotIdTagLine'),
-                                            'puuid': p.get('puuid'), # AJOUT POUR FIX TAG
+                                            'puuid': p.get('puuid'),
                                             'games': 0, 'wins': 0, 'champs': [], 'roles': [], 's_duo': [], 's_me': []
                                         }
                                     d = duo_data[gid]
@@ -407,8 +423,6 @@ if submitted:
                 if v['games'] > max_g: max_g = v['games']; best_duo = v
             
             if best_duo and max_g >= 2:
-                # --- FIX TAG MANQUANT ---
-                # Si le tag est manquant (None), on le fetch via le PUUID qu'on a stocké
                 real_name = best_duo['name']
                 real_tag = best_duo['tag']
                 
@@ -442,7 +456,6 @@ if submitted:
                 avg_duo['kda'] = ckda(avg_duo)
                 avg_me['kda'] = ckda(avg_me)
 
-                # --- VERDICT LOGIC ---
                 def score(s, r):
                     sc = min(5, s['kda']) + (s['kp']*4) + min(3, (s['vis_min']/(2.0 if r=="UTILITY" else 1.0))*2)
                     sc += min(4, s['dmg_min']/700) if r!="UTILITY" else 0
