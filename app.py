@@ -10,7 +10,7 @@ import time
 import os
 
 # --- 1. CONFIGURATION ---
-st.set_page_config(page_title="LoL Duo Analyst V81 (Safe Mode)", layout="wide")
+st.set_page_config(page_title="LoL Duo Analyst V82 (Eco Mode)", layout="wide")
 
 if 'api_session' not in st.session_state:
     st.session_state.api_session = requests.Session()
@@ -25,7 +25,10 @@ if not API_KEY:
     st.error("⚠️ CLÉ API MANQUANTE.")
     st.stop()
 
-# --- 3. CONSTANTES ---
+# --- 3. PARAMÈTRES ÉCONOMIQUES ---
+# On réduit à 10 matchs pour rester sous le radar des rate limits (12 requêtes au total)
+MATCH_COUNT = 10 
+
 BACKGROUND_IMAGE_URL = "https://media.discordapp.net/attachments/1065027576572518490/1179469739770630164/face_tiled.jpg?ex=657a90f2&is=65681bf2&hm=123"
 QUEUE_MAP = {"Ranked Solo/Duo": 420, "Ranked Flex": 440, "Draft Normal": 400, "ARAM": 450, "Arena": 1700}
 ROLE_ICONS = {"TOP": "🛡️ TOP", "JUNGLE": "🌲 JUNGLE", "MIDDLE": "🧙 MID", "BOTTOM": "🏹 ADC", "UTILITY": "🩹 SUPP", "UNKNOWN": "❓ FILL"}
@@ -39,7 +42,7 @@ TRANSLATIONS = {
         "v_survivor": "IMMORTEL", "s_survivor": "{target} survit et joue propre, {duo} meurt trop souvent", "v_tactician": "MASTERMIND", "s_tactician": "{target} gagne grâce à la vision et au map control",
         "v_breacher": "DESTRUCTEUR", "s_breacher": "{target} prend les tours, {duo} regarde", "v_solid": "DUO FUSIONNEL", "s_solid": "Synergie parfaite entre {target} et {duo}",
         "v_passenger": "PASSAGER", "s_passenger": "{target} se laisse porter par {duo} (Dégâts faibles)", "v_feeder": "ZONE DE DANGER", "s_feeder": "{target} passe trop de temps à l'écran gris vs {duo}",
-        "v_struggle": "EN DIFFICULTÉ", "s_struggle": "{target} peine à suivre le rythme de {duo}", "solo": "LOUP SOLITAIRE", "solo_sub": "Aucun duo récurrent détecté sur 20 parties.",
+        "v_struggle": "EN DIFFICULTÉ", "s_struggle": "{target} peine à suivre le rythme de {duo}", "solo": "LOUP SOLITAIRE", "solo_sub": "Aucun duo récurrent détecté sur 10 parties.",
         "loading": "Analyse tactique en cours...", "q_surv": "Injouable (KDA)", "q_dmg": "Gros Dégâts", "q_obj": "Destructeur", "q_vis": "Contrôle Map",
         "f_feed": "Meurt trop souvent", "f_blind": "Vision faible", "f_afk": "Dégâts faibles", "error_no_games": "Aucune partie trouvée."
     },
@@ -90,22 +93,21 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 5. COUCHE API SÉCURISÉE ---
-def safe_request(url, retries=2):
-    """Requête robuste avec Retry Backoff"""
+# --- 5. COUCHE API SÉCURISÉE (PATIENTE) ---
+def safe_request(url, retries=3):
+    """Requête très patiente"""
     for i in range(retries + 1):
         try:
             resp = st.session_state.api_session.get(url, timeout=5)
             if resp.status_code == 200:
                 return resp
             elif resp.status_code == 429: # Rate Limit
-                wait = int(resp.headers.get("Retry-After", 2))
+                # On attend vraiment ce que Riot demande + 1 seconde de sécu
+                wait = int(resp.headers.get("Retry-After", 2)) + 1
                 time.sleep(wait)
-                continue # Retry
-            elif resp.status_code == 403: # Key Expired
-                return "403"
-            elif resp.status_code == 404: # Not Found
-                return None
+                continue # Et on réessaie
+            elif resp.status_code == 403: return "403"
+            elif resp.status_code == 404: return None
         except:
             time.sleep(1)
             continue
@@ -120,7 +122,7 @@ def get_dd_version():
 
 DD_VERSION = get_dd_version()
 
-# --- 6. LOGIQUE MÉTIER ---
+# --- 6. LOGIQUE ---
 def get_champ_url(name):
     if not name: return "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Poro_0.jpg"
     clean = str(name).replace(" ", "").replace("'", "").replace(".", "")
@@ -145,7 +147,6 @@ def extract_stats(p):
     }
 
 def process_single_match(m_id, region, api_key, my_puuid):
-    # Appel Match Detail
     data_raw = safe_request(f"https://{region}.api.riotgames.com/lol/match/v5/matches/{m_id}?api_key={api_key}")
     
     if data_raw == "403": return "KEY_EXPIRED"
@@ -194,7 +195,7 @@ def determine_badges(stats, role, lang_dict):
     if stats.get('dmg_min', 0) < 300 and role not in ["UTILITY", "JUNGLE"]: badges.append((lang_dict.get("f_afk", "AFK"), "b-blue"))
     return badges[:3] if badges else [("Standard", "b-blue")]
 
-# --- 7. UI INTERFACE ---
+# --- 7. UI ---
 c_title, c_lang = st.columns([5, 1])
 with c_lang:
     lang_code = LANG_MAP[st.selectbox("Lang", list(LANG_MAP.keys()), label_visibility="collapsed")]
@@ -216,7 +217,7 @@ with st.form("search_form"):
     st.markdown("<br>", unsafe_allow_html=True)
     submitted = st.form_submit_button(T["btn_scan"])
 
-# --- 8. EXÉCUTION PRINCIPALE ---
+# --- 8. EXEC ---
 if submitted:
     if "#" not in riot_id_input:
         st.error("⚠️ Format invalide. Utilise: Nom#TAG")
@@ -225,32 +226,33 @@ if submitted:
         region_api = "europe" if region in ["EUW1", "EUN1", "TR1", "RU"] else ("asia" if region == "KR" else "americas")
         
         with st.spinner(T["loading"]):
-            # 1. FETCH PUUID
+            # 1. PUUID
             acc_req = safe_request(f"https://{region_api}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{quote(name_raw)}/{tag}?api_key={API_KEY}")
-            
             if acc_req == "403": st.error("🚨 CLÉ API EXPIRÉE (403)."); st.stop()
             if not acc_req: st.error("❌ Joueur introuvable."); st.stop()
-            
             puuid = acc_req.json().get("puuid")
             
-            # 2. FETCH MATCH LIST
-            matches_req = safe_request(f"https://{region_api}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue={QUEUE_MAP[queue_label]}&start=0&count=15&api_key={API_KEY}")
-            
+            # 2. MATCH IDS (REDUIT A 10)
+            matches_req = safe_request(f"https://{region_api}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?queue={QUEUE_MAP[queue_label]}&start=0&count={MATCH_COUNT}&api_key={API_KEY}")
             if matches_req == "403": st.error("🚨 CLÉ API EXPIRÉE (403)."); st.stop()
             if not matches_req or not matches_req.json(): st.warning(T["error_no_games"]); st.stop()
-                
             match_ids = matches_req.json()
 
-            # 3. PROCESS MATCHES (SAFE THREADS)
+            # 3. PROCESS (4 WORKERS MAX)
             agg_data = defaultdict(lambda: {'name': '', 'tag': '', 'puuid': '', 'games': 0, 'wins': 0, 'champs': [], 'roles': [], 's_duo': [], 's_me': []})
             target_display_name = riot_id_input
             
-            # WORKERS RÉDUITS A 4 POUR ÉVITER LE RATE LIMIT
+            # BARRE DE PROGRESSION VISUELLE
+            progress_bar = st.progress(0)
+            
             with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
                 futures = [executor.submit(process_single_match, m, region_api, API_KEY, puuid) for m in match_ids]
-                for future in concurrent.futures.as_completed(futures):
+                for i, future in enumerate(concurrent.futures.as_completed(futures)):
                     try:
                         res = future.result()
+                        # Mise à jour barre
+                        progress_bar.progress((i + 1) / len(match_ids))
+                        
                         if res == "KEY_EXPIRED": st.error("🚨 CLÉ API EXPIRÉE PENDANT L'ANALYSE."); st.stop()
                         if not res: continue
                         target_display_name = res['target_name']
@@ -264,10 +266,11 @@ if submitted:
                             d['s_duo'].append(entry['stats_duo'])
                             d['s_me'].append(entry['stats_me'])
                     except: pass
+            
+            progress_bar.empty() # Enlever la barre à la fin
 
             if not agg_data:
-                st.error("⚠️ AUCUNE DONNÉE RÉCUPÉRÉE.")
-                st.info("Causes possibles : 1. API Rate Limit (Trop de requêtes) 2. Aucune game trouvée avec ce PUUID 3. Erreur serveur Riot.")
+                st.warning("Aucun duo trouvé dans les parties récentes.")
                 st.stop()
                 
             best_duo = max(agg_data.values(), key=lambda x: x['games'])
@@ -275,7 +278,7 @@ if submitted:
             if best_duo['games'] < 2:
                 st.markdown(f"""<div class="verdict-box" style="border-color:#888;"><div style="font-size:32px; font-weight:900; color:#888;">{T["solo"]}</div><div style="font-size:16px; color:#aaa;">{T["solo_sub"]}</div></div>""", unsafe_allow_html=True)
             else:
-                # 4. FIX TAG & DISPLAY
+                # 4. FINAL DISPLAY
                 real_name, real_tag = best_duo['name'], best_duo['tag']
                 if not real_tag or real_tag == "None":
                     acc_check = safe_request(f"https://{region_api}.api.riotgames.com/riot/account/v1/accounts/by-puuid/{best_duo['puuid']}?api_key={API_KEY}")
@@ -300,7 +303,6 @@ if submitted:
                     return sc + min(4, (s['obj']/5000) + (s['towers']*0.5))
                 
                 ratio = get_score(avg_me, r_me) / max(0.1, get_score(avg_duo, r_duo))
-                
                 d_kda = (avg_me['kda'] - avg_duo['kda']) / 1.5
                 d_dmg = (avg_me['dmg_min'] - avg_duo['dmg_min']) / 400
                 d_vis = (avg_me['vis_min'] - avg_duo['vis_min']) / 0.8
